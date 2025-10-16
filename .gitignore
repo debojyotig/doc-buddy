@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+
+# Production
+dist/
+dist-electron/
+dist-react/
+build/
+out/
+release/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+Thumbs.db
+
+# Electron
+electron-builder.yml.bak
+
+# Temporary files
+*.tmp
+*.temp
+
+# Package manager
+.npm
+.yarn
+.pnpm-debug.log
+
+# Build files
+*.tsbuildinfo
+
+# Certificates (for code signing)
+certs/
+*.p12
+*.pem
+*.key
+
+# Implementation tracking docs (internal use only)
+docs/API_KEY_IMPLEMENTATION.md
+docs/IMPLEMENTATION_STATUS.md
+docs/WEEK2_PROGRESS.md
+docs/WEEK3_COMPLETE.md
+docs/WEEK3_PROGRESS.md
