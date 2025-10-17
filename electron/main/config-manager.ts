@@ -29,9 +29,8 @@ class ConfigManager {
     if (this.configPath) return;
 
     // Config file location: ~/.doc-buddy/config.json (user's home directory)
-    const userDataPath = app.getPath('userData');
-    const configDir = path.join(userDataPath, '..');
-    const appConfigDir = path.join(configDir, '.doc-buddy');
+    const homeDir = app.getPath('home');
+    const appConfigDir = path.join(homeDir, '.doc-buddy');
 
     // Ensure .doc-buddy directory exists
     if (!fs.existsSync(appConfigDir)) {

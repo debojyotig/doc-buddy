@@ -18,9 +18,8 @@ class ConfigManager {
    */
   initConfigPath() {
     if (this.configPath) return;
-    const userDataPath = electron.app.getPath("userData");
-    const configDir = path.join(userDataPath, "..");
-    const appConfigDir = path.join(configDir, ".doc-buddy");
+    const homeDir = electron.app.getPath("home");
+    const appConfigDir = path.join(homeDir, ".doc-buddy");
     if (!fs.existsSync(appConfigDir)) {
       fs.mkdirSync(appConfigDir, { recursive: true });
     }
