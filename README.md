@@ -24,8 +24,9 @@ Doc-Buddy is a desktop application that enables dev-on-call engineers to interac
    - Apple Silicon (M1/M2/M3): `Doc-Buddy-0.1.0-arm64.dmg`
    - Intel Mac: `Doc-Buddy-0.1.0.dmg`
 2. **Install** - Double-click DMG and drag to Applications
-3. **Configure** - Click the ⚙️ Settings icon and enter your credentials
-4. **Start chatting!** - Ask questions about your Datadog data
+3. **Fix Gatekeeper** - Run: `xattr -cr /Applications/Doc-Buddy.app` (see [macOS fix guide](MACOS_GATEKEEPER_FIX.md))
+4. **Configure** - Click the ⚙️ Settings icon and enter your credentials
+5. **Start chatting!** - Ask questions about your Datadog data
 
 See [DEPLOYMENT_OPTIONS.md](./DEPLOYMENT_OPTIONS.md) for all deployment options.
 

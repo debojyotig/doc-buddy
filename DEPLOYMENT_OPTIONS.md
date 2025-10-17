@@ -19,8 +19,15 @@ uname -m
 ```bash
 # Double-click the downloaded DMG file
 # Drag Doc-Buddy.app to Applications folder
-# Done!
+
+# Fix macOS Gatekeeper "damaged app" error (unsigned app)
+xattr -cr /Applications/Doc-Buddy.app
+
+# Now you can open the app
+open /Applications/Doc-Buddy.app
 ```
+
+**Note**: Since the app is not code-signed, macOS will block it with a "damaged" error. The `xattr -cr` command removes the quarantine attribute. See [MACOS_GATEKEEPER_FIX.md](MACOS_GATEKEEPER_FIX.md) for details.
 
 ### Configure
 ```bash

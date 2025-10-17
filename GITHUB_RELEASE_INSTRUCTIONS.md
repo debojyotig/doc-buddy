@@ -48,6 +48,7 @@ Not sure which one? Run `uname -m`:
 1. Download the appropriate DMG file
 2. Double-click to open
 3. Drag Doc-Buddy.app to Applications folder
+4. Fix macOS Gatekeeper: `xattr -cr /Applications/Doc-Buddy.app`
 
 ### Configure
 1. Create config file: `mkdir -p ~/.doc-buddy && cp config.template.json ~/.doc-buddy/config.json`
