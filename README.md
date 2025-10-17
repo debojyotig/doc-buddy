@@ -20,12 +20,14 @@ Doc-Buddy is a desktop application that enables dev-on-call engineers to interac
 
 **Doc-Buddy uses a "Build Once, Configure Anywhere" deployment model** - perfect for corporate environments!
 
-1. **Get the application** - Download the pre-built app for your platform
-2. **Launch Doc-Buddy** - Just double-click the app
+1. **Download** - Get the DMG from [GitHub Releases](https://github.com/debojyotig/doc-buddy/releases)
+   - Apple Silicon (M1/M2/M3): `Doc-Buddy-0.1.0-arm64.dmg`
+   - Intel Mac: `Doc-Buddy-0.1.0.dmg`
+2. **Install** - Double-click DMG and drag to Applications
 3. **Configure** - Click the ⚙️ Settings icon and enter your credentials
 4. **Start chatting!** - Ask questions about your Datadog data
 
-See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed user instructions.
+See [DEPLOYMENT_OPTIONS.md](./DEPLOYMENT_OPTIONS.md) for all deployment options.
 
 ### For Developers/Administrators
 

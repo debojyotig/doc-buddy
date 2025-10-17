@@ -3,10 +3,10 @@
 ## Option 1: Use Pre-built DMG (Easiest - NO npm needed!)
 
 ### Download the DMG
-1. Clone the repo or download from GitHub releases
-2. Choose your Mac type:
-   - **Apple Silicon (M1/M2/M3)**: `release/Doc-Buddy-0.1.0-arm64.dmg`
-   - **Intel Mac**: `release/Doc-Buddy-0.1.0.dmg`
+1. Go to [GitHub Releases](https://github.com/debojyotig/doc-buddy/releases)
+2. Download the DMG for your Mac type:
+   - **Apple Silicon (M1/M2/M3)**: `Doc-Buddy-0.1.0-arm64.dmg`
+   - **Intel Mac**: `Doc-Buddy-0.1.0.dmg`
 
 ### Check your Mac type:
 ```bash
@@ -17,9 +17,7 @@ uname -m
 
 ### Install
 ```bash
-# Option A: Double-click the DMG file
-open release/Doc-Buddy-0.1.0-arm64.dmg  # or Doc-Buddy-0.1.0.dmg
-
+# Double-click the downloaded DMG file
 # Drag Doc-Buddy.app to Applications folder
 # Done!
 ```
@@ -126,4 +124,4 @@ npm start
 - **node_modules (production)**: ~200MB
 - **node_modules (full)**: ~500MB
 
-**Recommendation:** Commit the DMG files OR use GitHub Releases to host them separately.
+**Current approach:** DMG files are hosted on [GitHub Releases](https://github.com/debojyotig/doc-buddy/releases) to avoid git push size limits.
