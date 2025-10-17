@@ -1372,10 +1372,12 @@ class AzureOpenAIProvider {
       temperature: request.temperature
     };
     console.log("Azure OpenAI Request:");
+    console.log("  BaseURL:", client.baseURL);
     console.log("  Endpoint:", this.config.endpoint);
     console.log("  Deployment:", this.config.deploymentName);
     console.log("  Model:", params.model);
     console.log("  Messages:", params.messages.length);
+    console.log("  Request Payload:", JSON.stringify(params, null, 2));
     if (request.tools && request.tools.length > 0) {
       params.tools = this.convertTools(request.tools);
       params.tool_choice = "auto";
