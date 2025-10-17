@@ -9,8 +9,11 @@
     "clientId": "",
     "clientSecret": "",
     "projectId": "",
+    "deploymentName": "gpt-4",
+    "model": "gpt-4",
     "authUrl": "https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token",
-    "endpoint": "https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT",
+    "endpoint": "https://YOUR_RESOURCE.openai.azure.com",
+    "apiVersion": "2025-01-01-preview",
     "scope": "https://cognitiveservices.azure.com/.default"
   }
 }

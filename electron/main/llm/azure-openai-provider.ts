@@ -41,7 +41,7 @@ export class AzureOpenAIProvider implements LLMProvider {
       model: process.env.AZURE_MODEL || config.model || 'gpt-4',
       authUrl: process.env.AZURE_AUTH_URL || config.authUrl,
       endpoint: process.env.AZURE_ENDPOINT || config.endpoint,
-      apiVersion: process.env.AZURE_API_VERSION || config.apiVersion || '2024-02-01',
+      apiVersion: process.env.AZURE_API_VERSION || config.apiVersion || '2025-01-01-preview',
       scope: process.env.AZURE_SCOPE || config.scope || 'https://cognitiveservices.azure.com/.default',
       upstreamEnv: process.env.AZURE_UPSTREAM_ENV || config.upstreamEnv,
       // Required fields
@@ -121,14 +121,23 @@ export class AzureOpenAIProvider implements LLMProvider {
       Object.assign(headers, this.config.customHeaders);
     }
 
-    this.client = new OpenAI({
+    // For corporate API gateways, don't add api-version as query param
+    // The version is already in the gateway URL path
+    const clientConfig: any = {
       baseURL: this.config.endpoint,
       apiKey: token, // Azure AD token used as API key
       defaultHeaders: headers,
-      defaultQuery: {
+    };
+
+    // Only add api-version query param for standard Azure OpenAI endpoints
+    // Corporate gateways typically have version in the path (e.g., /1.0/)
+    if (!this.config.endpoint?.includes('/api-management/')) {
+      clientConfig.defaultQuery = {
         'api-version': this.config.apiVersion,
-      },
-    });
+      };
+    }
+
+    this.client = new OpenAI(clientConfig);
 
     return this.client;
   }
@@ -221,20 +230,49 @@ export class AzureOpenAIProvider implements LLMProvider {
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const client = await this.initClient();
 
+    // For Azure OpenAI, when deployment is in the endpoint URL,
+    // we use a placeholder model name (Azure ignores this parameter)
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
-      model: this.config.model!,
+      model: this.config.deploymentName || this.config.model || 'gpt-4',
       messages: this.convertMessages(request.messages, request.system),
       max_tokens: request.max_tokens || 4096,
       temperature: request.temperature,
       top_p: request.top_p,
     };
 
+    console.log('Azure OpenAI Request:');
+    console.log('  Endpoint:', this.config.endpoint);
+    console.log('  Model:', params.model);
+    console.log('  Messages:', params.messages.length);
+
     if (request.tools && request.tools.length > 0) {
       params.tools = this.convertTools(request.tools) as any;
       params.tool_choice = 'auto';
+      console.log('  Tools:', request.tools.length);
     }
 
-    const response = await client.chat.completions.create(params);
+    try {
+      const response = await client.chat.completions.create(params);
+      console.log('Azure OpenAI Response: Success');
+      return this.parseResponse(response);
+    } catch (error: any) {
+      console.error('Azure OpenAI Error:');
+      console.error('  Status:', error.status);
+      console.error('  Message:', error.message);
+      console.error('  Error:', error.error);
+
+      // Create detailed error message for UI
+      const detailedMessage = `Azure OpenAI API Error (${error.status})\n\n` +
+        `Endpoint: ${this.config.endpoint}\n` +
+        `Model: ${params.model}\n` +
+        `Error: ${error.message || 'Unknown error'}\n` +
+        `Details: ${JSON.stringify(error.error || error.response?.data || 'No details available', null, 2)}`;
+
+      throw new Error(detailedMessage);
+    }
+  }
+
+  private parseResponse(response: OpenAI.Chat.ChatCompletion): ChatResponse {
 
     const choice = response.choices[0];
     const content: ContentBlock[] = [];
@@ -280,7 +318,7 @@ export class AzureOpenAIProvider implements LLMProvider {
     const client = await this.initClient();
 
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
-      model: this.config.model!,
+      model: this.config.deploymentName || this.config.model || 'gpt-4',
       messages: this.convertMessages(request.messages, request.system),
       max_tokens: request.max_tokens || 4096,
       temperature: request.temperature,

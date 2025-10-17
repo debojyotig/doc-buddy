@@ -11,9 +11,13 @@ interface AppConfig {
     clientId: string;
     clientSecret: string;
     projectId?: string;
+    deploymentName?: string;
+    model?: string;
     authUrl: string;
     endpoint: string;
+    apiVersion?: string;
     scope: string;
+    upstreamEnv?: string;
   };
 }
 
@@ -33,9 +37,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       clientId: '',
       clientSecret: '',
       projectId: '',
+      deploymentName: 'gpt-4',
+      model: 'gpt-4',
       authUrl: 'https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token',
-      endpoint: 'https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT',
+      endpoint: 'https://YOUR_RESOURCE.openai.azure.com',
+      apiVersion: '2025-01-01-preview',
       scope: 'https://cognitiveservices.azure.com/.default',
+      upstreamEnv: '',
     },
   });
   const [configPath, setConfigPath] = useState<string>('');
@@ -269,9 +277,42 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   onChange={(e) =>
                     setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, projectId: e.target.value } })
                   }
-                  placeholder="Leave empty if not required"
+                  placeholder="Leave empty if not required by your gateway"
                   className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Sent as 'projectId' header</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Deployment Name
+                </label>
+                <input
+                  type="text"
+                  value={config.azureOpenAI.deploymentName || ''}
+                  onChange={(e) =>
+                    setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, deploymentName: e.target.value } })
+                  }
+                  placeholder="gpt-5-mini_2025-08-07"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Azure deployment name (e.g., gpt-5-mini_2025-08-07)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Model Name
+                </label>
+                <input
+                  type="text"
+                  value={config.azureOpenAI.model || ''}
+                  onChange={(e) =>
+                    setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, model: e.target.value } })
+                  }
+                  placeholder="gpt-5-mini"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Model name sent in API request body</p>
               </div>
 
               <div>
@@ -282,9 +323,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   onChange={(e) =>
                     setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, authUrl: e.target.value } })
                   }
-                  placeholder="https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token"
+                  placeholder="https://api.uhg.com/oauth2/token"
                   className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
                 />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">OAuth2 token endpoint</p>
               </div>
 
               <div>
@@ -297,7 +339,23 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   onChange={(e) =>
                     setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, endpoint: e.target.value } })
                   }
-                  placeholder="https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT"
+                  placeholder="https://api.uhg.com/api/cloud/api-management/ai-gateway-reasoning/1.0"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Base endpoint WITHOUT /openai/deployments path (SDK adds this)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  API Version
+                </label>
+                <input
+                  type="text"
+                  value={config.azureOpenAI.apiVersion || ''}
+                  onChange={(e) =>
+                    setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, apiVersion: e.target.value } })
+                  }
+                  placeholder="2025-01-01-preview"
                   className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
                 />
               </div>
@@ -312,9 +370,25 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   onChange={(e) =>
                     setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, scope: e.target.value } })
                   }
-                  placeholder="https://cognitiveservices.azure.com/.default"
+                  placeholder="https://api.uhg.com/.default"
                   className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Upstream Environment (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={config.azureOpenAI.upstreamEnv || ''}
+                  onChange={(e) =>
+                    setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, upstreamEnv: e.target.value } })
+                  }
+                  placeholder="Leave empty or enter 'stg' for staging"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Sent as 'x-upstream-env' header</p>
               </div>
             </div>
           </div>

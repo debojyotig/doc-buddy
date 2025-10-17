@@ -40,22 +40,48 @@
         },
         "projectId": {
           "type": "string",
-          "description": "Optional project ID if required by your setup"
+          "description": "Optional project ID header if required by your API gateway"
+        },
+        "deploymentName": {
+          "type": "string",
+          "description": "Azure OpenAI deployment name (e.g., gpt-5-mini_2025-08-07)",
+          "default": "gpt-4"
+        },
+        "model": {
+          "type": "string",
+          "description": "Model name to use in API requests (e.g., gpt-5-mini)",
+          "default": "gpt-4"
         },
         "authUrl": {
           "type": "string",
-          "description": "Azure AD token endpoint URL",
+          "description": "OAuth2 token endpoint URL (e.g., https://api.uhg.com/oauth2/token)",
           "format": "uri"
         },
         "endpoint": {
           "type": "string",
-          "description": "Azure OpenAI endpoint URL",
+          "description": "Azure OpenAI base endpoint URL WITHOUT /openai/deployments path. The SDK appends this automatically. (e.g., https://api.uhg.com/api/cloud/api-management/ai-gateway-reasoning/1.0)",
           "format": "uri"
+        },
+        "apiVersion": {
+          "type": "string",
+          "description": "Azure OpenAI API version",
+          "default": "2025-01-01-preview"
         },
         "scope": {
           "type": "string",
-          "description": "OAuth2 scope for Azure OpenAI",
+          "description": "OAuth2 scope for Azure OpenAI (e.g., https://api.uhg.com/.default)",
           "default": "https://cognitiveservices.azure.com/.default"
+        },
+        "upstreamEnv": {
+          "type": "string",
+          "description": "Optional x-upstream-env header (e.g., 'stg' for staging)"
+        },
+        "customHeaders": {
+          "type": "object",
+          "description": "Optional custom headers to include in requests",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     }
