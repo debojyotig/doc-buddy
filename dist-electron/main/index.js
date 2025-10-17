@@ -1357,7 +1357,8 @@ class AzureOpenAIProvider {
    * Convert MCP tools to OpenAI function format
    */
   convertTools(mcpTools) {
-    return mcpTools.map((tool) => ({
+    console.log("convertTools input:", JSON.stringify(mcpTools, null, 2));
+    const converted = mcpTools.map((tool) => ({
       type: "function",
       function: {
         name: tool.name,
@@ -1365,12 +1366,22 @@ class AzureOpenAIProvider {
         parameters: tool.inputSchema || { type: "object", properties: {} }
       }
     }));
+    console.log("convertTools output:", JSON.stringify(converted, null, 2));
+    return converted;
   }
   /**
    * Non-streaming chat completion
    */
   async chat(request) {
     const client = await this.initClient();
+    console.log("INCOMING REQUEST OBJECT:", {
+      hasMaxTokens: "max_tokens" in request,
+      maxTokensValue: request.max_tokens,
+      hasTemperature: "temperature" in request,
+      temperatureValue: request.temperature,
+      hasTools: request.tools && request.tools.length > 0,
+      toolsCount: request.tools?.length || 0
+    });
     const params = {
       model: this.config.model || "gpt-4",
       messages: this.convertMessages(request.messages, request.system)
@@ -1386,12 +1397,9 @@ class AzureOpenAIProvider {
       }
     }
     if (request.tools && request.tools.length > 0) {
-      if (!isGpt5Mini) {
-        params.tools = this.convertTools(request.tools);
-        params.tool_choice = "auto";
-      } else {
-        console.log("  Skipping tools for gpt-5-mini (may not support function calling)");
-      }
+      params.tools = request.tools;
+      params.tool_choice = "auto";
+      console.log("  Tools added to payload:", params.tools?.length || 0);
     }
     console.log("Azure OpenAI Request:");
     console.log("  BaseURL:", client.baseURL);
@@ -1430,12 +1438,21 @@ Details: ${JSON.stringify(error.error || error.response?.data || "No details ava
       });
     }
     if (choice.message.tool_calls) {
+      console.log("=== Tool Calls from LLM ===");
+      console.log("Number of tool calls:", choice.message.tool_calls.length);
       for (const toolCall of choice.message.tool_calls) {
+        console.log("Tool Call:", {
+          id: toolCall.id,
+          name: toolCall.function.name,
+          arguments_raw: toolCall.function.arguments
+        });
+        const parsedInput = JSON.parse(toolCall.function.arguments);
+        console.log("Parsed input:", JSON.stringify(parsedInput, null, 2));
         content.push({
           type: "tool_use",
           id: toolCall.id,
           name: toolCall.function.name,
-          input: JSON.parse(toolCall.function.arguments)
+          input: parsedInput
         });
       }
     }
@@ -1470,8 +1487,8 @@ Details: ${JSON.stringify(error.error || error.response?.data || "No details ava
         params.temperature = request.temperature;
       }
     }
-    if (request.tools && request.tools.length > 0 && !isGpt5Mini) {
-      params.tools = this.convertTools(request.tools);
+    if (request.tools && request.tools.length > 0) {
+      params.tools = request.tools;
       params.tool_choice = "auto";
     }
     const stream = await client.chat.completions.create(params);
@@ -1504,7 +1521,9 @@ Details: ${JSON.stringify(error.error || error.response?.data || "No details ava
       if (chunk.choices[0]?.finish_reason) {
         yield {
           type: "message_stop",
-          stop_reason: this.mapStopReason(chunk.choices[0].finish_reason)
+          delta: {
+            stop_reason: this.mapStopReason(chunk.choices[0].finish_reason)
+          }
         };
       }
     }
@@ -1746,10 +1765,36 @@ class LLMManager {
   getSystemPrompt() {
     return `You are Doc-Buddy, an AI assistant specialized in helping dev-on-call engineers monitor and troubleshoot their services using Datadog.
 
-You have access to Datadog data through tools that can:
-- Query APM metrics (latency, throughput, error rate)
-- Check service health status
-- Search logs
+You have access to Datadog APM data through powerful tools:
+- **get_service_health**: Get overall service health with automatically discovered metrics (uses Spans API)
+- **get_service_operations**: List all operations/endpoints with detailed performance metrics (uses Spans API)
+- **query_apm_metrics**: Query specific metrics with custom time ranges
+- **search_logs**: Search application logs for errors and patterns
+
+IMPORTANT - Tool Usage Strategy:
+When analyzing a service, use this recommended workflow:
+
+1. **FIRST: Understand the service architecture**
+   - Call get_service_health to get overall health status
+   - This automatically discovers the right APM metrics for the service type (Netty, Servlet, WebFlux, etc.)
+   - Shows aggregated latency, throughput, error rate, and active alerts
+
+2. **SECOND: Drill down into specific operations**
+   - Call get_service_operations to see all endpoints/operations
+   - This shows per-operation metrics: request count, error rate, p50/p95/p99 latency
+   - Identify which specific operations are slow or failing
+   - Use this to understand the service's API surface and which endpoints have the most traffic
+
+3. **THIRD: Investigate root causes**
+   - Use search_logs to find error messages and stack traces
+   - Search for patterns identified in the metrics (specific operation names, error types)
+   - Look for recent deployments, configuration changes, or anomalies
+
+4. **OPTIONAL: Deep dive into specific metrics**
+   - Use query_apm_metrics only if you need custom time ranges or specific aggregations
+   - The Spans API tools (get_service_health, get_service_operations) are usually faster and more reliable
+
+**Best Practice**: Start with get_service_operations to see the full picture of a service's performance across all endpoints. This is more informative than overall health metrics alone.
 
 When answering questions:
 1. Use the tools to fetch real-time data from Datadog
@@ -1757,6 +1802,36 @@ When answering questions:
 3. If you see issues, suggest specific troubleshooting steps
 4. Format your responses clearly with bullet points and sections
 5. Include relevant metrics and timestamps
+
+IMPORTANT - Response Formatting Guidelines:
+- Use **bold** for emphasis on important metrics, service names, and key findings
+- Use headers (## or ###) to organize information into sections
+- Use bullet points (-) or numbered lists (1.) for steps and findings
+- Use code blocks (\`\`\`) for log snippets, JSON data, or command examples
+- Use inline code (\`) for metric names, service names, and technical terms
+- Use tables (| Header |) when comparing multiple metrics or services
+- Use > blockquotes for warnings or important alerts
+- Structure your response with clear sections like "## Current Status", "## Key Findings", "## Recommendations"
+
+Example of well-formatted response:
+## Service Health Summary
+The **payment-service** is experiencing elevated latency.
+
+**Key Metrics:**
+- **P95 Latency**: 450ms (baseline: 200ms)
+- **Error Rate**: 2.3%
+- **Throughput**: 1,200 req/min
+
+## Root Cause
+Analysis of logs shows database connection pool exhaustion:
+\`\`\`
+ERROR: ConnectionPool timeout - max 50 connections reached
+\`\`\`
+
+## Recommendations
+1. **Immediate**: Scale database connection pool to 100
+2. Review slow queries causing connection hold time
+3. Monitor \`db.connection.wait_time\` metric
 
 Be concise but thorough. Focus on helping engineers quickly identify and resolve issues.`;
   }
@@ -1887,8 +1962,7 @@ class DatadogClient {
         }
       });
     }
-    const site = process.env.DD_SITE || "datadoghq.com";
-    this.configuration.baseServer = new datadogApiClient.client.Server(`https://api.${site}`, {});
+    console.log("Datadog configuration created (using default: api.datadoghq.com)");
     return this.configuration;
   }
   /**
@@ -2008,6 +2082,121 @@ class DatadogClient {
             }
           }
         }
+      });
+      return response;
+    });
+  }
+  /**
+   * Search for metrics by query string (supports wildcards)
+   */
+  async listMetrics(query) {
+    const config = await this.getConfiguration();
+    const metricsApi = new datadogApiClient.v1.MetricsApi(config);
+    return retryWithBackoff(async () => {
+      const response = await metricsApi.listMetrics({
+        q: query
+      });
+      return response;
+    });
+  }
+  /**
+   * List active metrics with optional tag filtering
+   */
+  async listActiveMetrics(params) {
+    const config = await this.getConfiguration();
+    const metricsApi = new datadogApiClient.v1.MetricsApi(config);
+    return retryWithBackoff(async () => {
+      const response = await metricsApi.listActiveMetrics({
+        from: Math.floor(params.from / 1e3),
+        // Convert to seconds
+        host: params.host,
+        tagFilter: params.tagFilter
+      });
+      return response;
+    });
+  }
+  /**
+   * List tags for a specific metric name (v2 API)
+   * Returns all tag key-value pairs for the metric
+   */
+  async listTagsByMetricName(metricName) {
+    const config = await this.getConfiguration();
+    const metricsApi = new datadogApiClient.v2.MetricsApi(config);
+    return retryWithBackoff(async () => {
+      const response = await metricsApi.listTagsByMetricName({
+        metricName
+      });
+      return response;
+    });
+  }
+  /**
+   * Aggregate APM spans into buckets and compute metrics
+   * This is the preferred method for APM service metrics (vs queryMetrics)
+   * Now uses proper v2 types for compute and groupBy
+   */
+  async aggregateSpans(params) {
+    const config = await this.getConfiguration();
+    const spansApi = new datadogApiClient.v2.SpansApi(config);
+    return retryWithBackoff(async () => {
+      const body = {
+        data: {
+          type: "aggregate_request",
+          attributes: {
+            filter: {
+              query: params.query,
+              from: new Date(params.from).toISOString(),
+              to: new Date(params.to).toISOString()
+            },
+            compute: params.compute,
+            groupBy: params.groupBy
+          }
+        }
+      };
+      console.log("=== Spans API Request ===");
+      console.log("Query:", params.query);
+      console.log("Compute count:", params.compute?.length || 0);
+      console.log("GroupBy count:", params.groupBy?.length || 0);
+      const response = await spansApi.aggregateSpans({ body });
+      console.log("=== Spans API Response ===");
+      console.log("Status:", response.meta?.status);
+      console.log("Buckets:", response.data?.buckets?.length || 0);
+      return response;
+    });
+  }
+  /**
+   * List APM spans that match a query
+   */
+  async listSpans(params) {
+    const config = await this.getConfiguration();
+    const spansApi = new datadogApiClient.v2.SpansApi(config);
+    return retryWithBackoff(async () => {
+      const body = {
+        data: {
+          type: "search_request",
+          attributes: {
+            filter: {
+              query: params.query,
+              from: new Date(params.from).toISOString(),
+              to: new Date(params.to).toISOString()
+            },
+            sort: params.sort ? params.sort : void 0,
+            page: params.limit ? { limit: params.limit } : void 0
+          }
+        }
+      };
+      const response = await spansApi.listSpans({ body });
+      return response;
+    });
+  }
+  /**
+   * Get service definition from service catalog
+   */
+  async getServiceDefinition(serviceName) {
+    const config = await this.getConfiguration();
+    const serviceDefinitionApi = new datadogApiClient.v2.ServiceDefinitionApi(config);
+    return retryWithBackoff(async () => {
+      const response = await serviceDefinitionApi.getServiceDefinition({
+        serviceName
       });
       return response;
     });
@@ -2219,6 +2408,444 @@ async function queryAPMMetrics(input) {
     };
   }
 }
+function categorizeMetrics(metricNames) {
+  const result = {};
+  const latencyPatterns = [
+    /\.duration$/,
+    /\.latency$/,
+    /\.response_time$/,
+    /\.time$/
+  ];
+  const throughputPatterns = [
+    /\.hits$/,
+    /\.requests$/,
+    /\.count$/,
+    /\.calls$/
+  ];
+  const errorPatterns = [
+    /\.errors$/,
+    /\.error_count$/,
+    /\.exceptions$/,
+    /\.failures$/
+  ];
+  for (const pattern of latencyPatterns) {
+    const match = metricNames.find((m) => pattern.test(m));
+    if (match) {
+      result.latency = match;
+      break;
+    }
+  }
+  for (const pattern of throughputPatterns) {
+    const match = metricNames.find((m) => pattern.test(m));
+    if (match) {
+      result.throughput = match;
+      break;
+    }
+  }
+  for (const pattern of errorPatterns) {
+    const match = metricNames.find((m) => pattern.test(m));
+    if (match) {
+      result.errors = match;
+      break;
+    }
+  }
+  return result;
+}
+function groupMetricsByPattern(metricNames) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const metric of metricNames) {
+    const lastDotIndex = metric.lastIndexOf(".");
+    if (lastDotIndex === -1) continue;
+    const basePattern = metric.substring(0, lastDotIndex);
+    if (!groups.has(basePattern)) {
+      groups.set(basePattern, []);
+    }
+    groups.get(basePattern).push(metric);
+  }
+  return groups;
+}
+function isServerSidePattern(pattern) {
+  if (pattern.includes(".client")) return false;
+  if (pattern.includes(".outbound")) return false;
+  if (pattern.includes("trace.http.")) return false;
+  if (pattern.includes("trace.netty.client")) return false;
+  if (pattern.includes("trace.play_ws")) return false;
+  if (pattern.includes("trace.okhttp")) return false;
+  if (pattern.includes("trace.httpclient")) return false;
+  if (pattern.includes("trace.apache.httpclient")) return false;
+  if (pattern.includes(".server")) return true;
+  if (pattern.includes("trace.servlet")) return true;
+  if (pattern.includes("trace.netty.request")) return true;
+  if (pattern.includes("trace.spring.handler")) return true;
+  if (pattern.includes("trace.graphql")) return true;
+  if (pattern.includes("trace.play.request")) return true;
+  if (pattern.includes("trace.vertx.http.server")) return true;
+  if (pattern.includes("trace.akka.http.server")) return true;
+  return false;
+}
+async function testCandidatesInParallel(candidates, service, environment, from, to) {
+  const datadogClient = getDatadogClient();
+  const timeFrom = from || Date.now() - 60 * 60 * 1e3;
+  const timeTo = to || Date.now();
+  console.log(`
+Testing ${candidates.length} candidate metrics...`);
+  const results = await Promise.all(
+    candidates.map(async (metric) => {
+      const query = environment ? `avg:${metric}{service:${service},env:${environment}}` : `avg:${metric}{service:${service}}`;
+      try {
+        const response = await datadogClient.queryMetrics({
+          query,
+          from: timeFrom,
+          to: timeTo
+        });
+        const hasData = response.series && response.series.length > 0 && response.series[0].pointlist && response.series[0].pointlist.length > 0;
+        if (hasData) {
+          console.log(`  ✅ ${metric}: HAS DATA`);
+          return metric;
+        } else {
+          console.log(`  ❌ ${metric}: No data`);
+          return null;
+        }
+      } catch (error) {
+        console.log(`  ❌ ${metric}: Error -`, error);
+        return null;
+      }
+    })
+  );
+  return results.filter((m) => m !== null);
+}
+async function fallbackDiscovery(service, environment, from, to) {
+  console.log("\n--- Fallback: Using v1 listMetrics API ---");
+  const datadogClient = getDatadogClient();
+  try {
+    const response = await datadogClient.listMetrics("trace.*");
+    if (!response.results?.metrics || response.results.metrics.length === 0) {
+      console.log("No trace metrics found in Datadog");
+      return [];
+    }
+    console.log(`Found ${response.results.metrics.length} total trace metrics`);
+    const candidates = response.results.metrics.filter(
+      (m) => m.includes("duration") || m.includes("hits") || m.includes("errors") || m.includes("latency") || m.includes("requests") || m.includes("count")
+    );
+    console.log(`Filtered to ${candidates.length} candidate metrics`);
+    const working = await testCandidatesInParallel(
+      candidates.slice(0, 50),
+      // Limit to first 50 to avoid too many API calls
+      service,
+      environment,
+      from,
+      to
+    );
+    return working;
+  } catch (error) {
+    console.error("Error in fallback discovery:", error);
+    return [];
+  }
+}
+async function discoverServiceMetrics(service, environment, from, to) {
+  const cache = getCache();
+  const cacheKey = `metric-discovery-v3:${service}:${environment || "default"}`;
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    console.log(`
+✅ Metric discovery cache hit for service: ${service}`);
+    return cached;
+  }
+  console.log(`
+=== Metric Discovery for: ${service} ===`);
+  const timeFrom = from || Date.now() - 60 * 60 * 1e3;
+  const timeTo = to || Date.now();
+  console.log("\n--- Step 1: Testing Common Patterns ---");
+  const commonPatterns = [
+    // === SERVER-SIDE PATTERNS (incoming requests TO the service) ===
+    // Servlet-based (Tomcat, Jetty, etc.)
+    "trace.servlet.request.duration",
+    "trace.servlet.request.hits",
+    "trace.servlet.request.errors",
+    // Netty server (Spring WebFlux, etc.)
+    "trace.netty.request.duration",
+    "trace.netty.request.hits",
+    "trace.netty.request.errors",
+    // Spring Web MVC
+    "trace.spring.handler.duration",
+    "trace.spring.handler.hits",
+    "trace.spring.handler.errors",
+    // GraphQL
+    "trace.graphql.request.duration",
+    "trace.graphql.request.hits",
+    "trace.graphql.request.errors",
+    // Generic HTTP server
+    "trace.http.server.request.duration",
+    "trace.http.server.request.hits",
+    "trace.http.server.request.errors",
+    // Play Framework server
+    "trace.play.request.duration",
+    "trace.play.request.hits",
+    "trace.play.request.errors",
+    // Vert.x
+    "trace.vertx.http.server.duration",
+    "trace.vertx.http.server.hits",
+    "trace.vertx.http.server.errors",
+    // Akka HTTP
+    "trace.akka.http.server.duration",
+    "trace.akka.http.server.hits",
+    "trace.akka.http.server.errors",
+    // === CLIENT-SIDE PATTERNS (outgoing requests FROM the service) ===
+    // These will be discovered but filtered out for primary service metrics
+    // Netty client (outbound HTTP calls)
+    "trace.netty.client.request.duration",
+    "trace.netty.client.request.hits",
+    "trace.netty.client.request.errors",
+    // Play WS client (outbound WS calls)
+    "trace.play_ws.request.duration",
+    "trace.play_ws.request.hits",
+    "trace.play_ws.request.errors"
+  ];
+  const workingPatterns = await testCandidatesInParallel(
+    commonPatterns,
+    service,
+    environment,
+    timeFrom,
+    timeTo
+  );
+  if (workingPatterns.length > 0) {
+    console.log(`
+✅ Found ${workingPatterns.length} working metrics from common patterns`);
+    const grouped2 = groupMetricsByPattern(workingPatterns);
+    const serverSideGroups2 = Array.from(grouped2.entries()).filter(([pattern]) => isServerSidePattern(pattern)).sort((a, b) => b[1].length - a[1].length);
+    const primaryPattern2 = serverSideGroups2[0];
+    const primaryMetrics2 = primaryPattern2 ? categorizeMetrics(primaryPattern2[1]) : {};
+    const alternateMetrics2 = {};
+    for (const [pattern, metrics] of grouped2.entries()) {
+      if (primaryPattern2 && pattern === primaryPattern2[0]) continue;
+      alternateMetrics2[pattern] = categorizeMetrics(metrics);
+    }
+    const result2 = {
+      service,
+      metrics: primaryMetrics2,
+      alternateMetrics: Object.keys(alternateMetrics2).length > 0 ? alternateMetrics2 : void 0,
+      discovered: workingPatterns
+    };
+    console.log("\n=== Discovery Result ===");
+    console.log("Primary metrics (server-side):", JSON.stringify(primaryMetrics2, null, 2));
+    if (result2.alternateMetrics) {
+      const serverPatterns = [];
+      const clientPatterns = [];
+      for (const pattern of Object.keys(result2.alternateMetrics)) {
+        if (isServerSidePattern(pattern)) {
+          serverPatterns.push(pattern);
+        } else {
+          clientPatterns.push(pattern);
+        }
+      }
+      if (serverPatterns.length > 0) {
+        console.log("Alternate server patterns:", serverPatterns.join(", "));
+      }
+      if (clientPatterns.length > 0) {
+        console.log("Client patterns (outbound calls):", clientPatterns.join(", "));
+      }
+    }
+    cache.set(cacheKey, result2, 60 * 60 * 1e3);
+    return result2;
+  }
+  console.log("\n--- Step 2: Falling back to listMetrics API ---");
+  const allDiscovered = await fallbackDiscovery(service, environment, timeFrom, timeTo);
+  if (allDiscovered.length === 0) {
+    console.log("\n❌ No metrics found for this service");
+    return null;
+  }
+  console.log(`
+✅ Discovered ${allDiscovered.length} metrics for service`);
+  const grouped = groupMetricsByPattern(allDiscovered);
+  console.log(`
+--- Categorizing Metrics ---`);
+  console.log(`Found ${grouped.size} metric pattern groups:`);
+  for (const [pattern, metrics] of grouped.entries()) {
+    const isServerSide = isServerSidePattern(pattern);
+    console.log(`  ${isServerSide ? "🟢" : "🔵"} ${pattern}: ${metrics.join(", ")}`);
+  }
+  const serverSideGroups = Array.from(grouped.entries()).filter(([pattern]) => isServerSidePattern(pattern)).sort((a, b) => b[1].length - a[1].length);
+  const primaryPattern = serverSideGroups[0];
+  const primaryMetrics = primaryPattern ? categorizeMetrics(primaryPattern[1]) : {};
+  const alternateMetrics = {};
+  for (const [pattern, metrics] of grouped.entries()) {
+    if (primaryPattern && pattern === primaryPattern[0]) continue;
+    alternateMetrics[pattern] = categorizeMetrics(metrics);
+  }
+  const result = {
+    service,
+    metrics: primaryMetrics,
+    alternateMetrics: Object.keys(alternateMetrics).length > 0 ? alternateMetrics : void 0,
+    discovered: allDiscovered
+  };
+  console.log("\n=== Discovery Result ===");
+  console.log("Primary metrics (server-side):", JSON.stringify(primaryMetrics, null, 2));
+  if (result.alternateMetrics) {
+    const serverPatterns = [];
+    const clientPatterns = [];
+    for (const pattern of Object.keys(result.alternateMetrics)) {
+      if (isServerSidePattern(pattern)) {
+        serverPatterns.push(pattern);
+      } else {
+        clientPatterns.push(pattern);
+      }
+    }
+    if (serverPatterns.length > 0) {
+      console.log("Alternate server patterns:", serverPatterns.join(", "));
+    }
+    if (clientPatterns.length > 0) {
+      console.log("Client patterns (outbound calls):", clientPatterns.join(", "));
+    }
+  }
+  cache.set(cacheKey, result, 60 * 60 * 1e3);
+  return result;
+}
+class DatadogQueryBuilder {
+  filters = [];
+  /**
+   * Add service filter
+   */
+  service(name) {
+    this.filters.push(`service:${name}`);
+    return this;
+  }
+  /**
+   * Add environment filter (supports both env: and environment: tags)
+   */
+  environment(env) {
+    this.filters.push(`(env:${env} OR environment:${env})`);
+    return this;
+  }
+  /**
+   * Add operation/resource name filter
+   */
+  operation(op) {
+    this.filters.push(`resource_name:"${op}"`);
+    return this;
+  }
+  /**
+   * Add status filter
+   */
+  status(status) {
+    this.filters.push(`status:${status}`);
+    return this;
+  }
+  /**
+   * Add span kind filter
+   * - entry: Service entry spans (incoming requests)
+   * - client: Outbound calls to other services
+   * - server: Server handling a request
+   * - producer: Message queue producer
+   * - consumer: Message queue consumer
+   */
+  spanKind(kind) {
+    this.filters.push(`span.kind:${kind}`);
+    return this;
+  }
+  /**
+   * Add span type filter
+   */
+  spanType(type) {
+    this.filters.push(`span.type:${type}`);
+    return this;
+  }
+  /**
+   * Add minimum duration filter
+   */
+  durationGreaterThan(ms) {
+    const durationNs = ms * 1e6;
+    this.filters.push(`@duration:>=${durationNs}`);
+    return this;
+  }
+  /**
+   * Add maximum duration filter
+   */
+  durationLessThan(ms) {
+    const durationNs = ms * 1e6;
+    this.filters.push(`@duration:<${durationNs}`);
+    return this;
+  }
+  /**
+   * Add duration range filter
+   */
+  durationBetween(minMs, maxMs) {
+    const minNs = minMs * 1e6;
+    const maxNs = maxMs * 1e6;
+    this.filters.push(`@duration:[${minNs} TO ${maxNs}]`);
+    return this;
+  }
+  /**
+   * Add error type filter
+   */
+  errorType(type) {
+    this.filters.push(`@error.type:"${type}"`);
+    return this;
+  }
+  /**
+   * Add error message filter
+   */
+  errorMessage(message) {
+    this.filters.push(`@error.message:"${message}"`);
+    return this;
+  }
+  /**
+   * Add HTTP status code filter
+   */
+  httpStatusCode(code) {
+    this.filters.push(`@http.status_code:${code}`);
+    return this;
+  }
+  /**
+   * Add HTTP method filter
+   */
+  httpMethod(method) {
+    this.filters.push(`@http.method:${method.toUpperCase()}`);
+    return this;
+  }
+  /**
+   * Add HTTP URL path filter
+   */
+  httpUrl(url2) {
+    this.filters.push(`@http.url:"${url2}"`);
+    return this;
+  }
+  /**
+   * Add peer service filter (for downstream service calls)
+   */
+  peerService(service) {
+    this.filters.push(`peer.service:${service}`);
+    return this;
+  }
+  /**
+   * Add custom filter string
+   */
+  custom(filter) {
+    this.filters.push(filter);
+    return this;
+  }
+  /**
+   * Build the final query string
+   */
+  build() {
+    return this.filters.join(" ");
+  }
+  /**
+   * Reset the builder
+   */
+  reset() {
+    this.filters = [];
+    return this;
+  }
+  /**
+   * Get current filters
+   */
+  getFilters() {
+    return [...this.filters];
+  }
+}
+function buildServiceEntryQuery(service, environment) {
+  return new DatadogQueryBuilder().service(service).spanKind("entry").environment(environment || "").build().trim();
+}
 async function getServiceHealth(input) {
   try {
     if (!validateServiceName(input.service)) {
@@ -2240,33 +2867,104 @@ async function getServiceHealth(input) {
     }
     const { from, to } = parseTimeRange("1h");
     const datadogClient = getDatadogClient();
-    const [errorRateResponse, latencyResponse, throughputResponse, monitors] = await Promise.all([
-      // Error rate
-      datadogClient.queryMetrics({
-        query: input.environment ? `avg:trace.servlet.request.errors{service:${input.service},env:${input.environment}}.as_rate()` : `avg:trace.servlet.request.errors{service:${input.service}}.as_rate()`,
-        from,
-        to
-      }),
-      // P95 Latency
-      datadogClient.queryMetrics({
-        query: input.environment ? `p95:trace.servlet.request.duration{service:${input.service},env:${input.environment}}` : `p95:trace.servlet.request.duration{service:${input.service}}`,
-        from,
-        to
-      }),
-      // Throughput
-      datadogClient.queryMetrics({
-        query: input.environment ? `sum:trace.servlet.request.hits{service:${input.service},env:${input.environment}}.as_count()` : `sum:trace.servlet.request.hits{service:${input.service}}.as_count()`,
-        from,
-        to
-      }),
-      // Active monitors
-      datadogClient.getMonitors({
-        tags: [`service:${input.service}`]
-      })
-    ]);
+    console.log("\n=== Service Health Check ===");
+    console.log("Service:", input.service);
+    console.log("Environment:", input.environment || "none");
+    console.log("Time range:", new Date(from).toISOString(), "to", new Date(to).toISOString());
+    console.log("\n--- Discovering metric patterns ---");
+    const discovered = await discoverServiceMetrics(
+      input.service,
+      input.environment,
+      from,
+      to
+    );
+    if (!discovered) {
+      console.log("❌ No metric patterns found for this service");
+      return {
+        success: false,
+        error: `No trace metrics found for service "${input.service}". The service may not be instrumented with APM, or the service name may be incorrect.`
+      };
+    }
+    console.log(`✅ Discovered metrics for service`);
+    console.log("  Latency:", discovered.metrics.latency || "N/A");
+    console.log("  Throughput:", discovered.metrics.throughput || "N/A");
+    console.log("  Errors:", discovered.metrics.errors || "N/A");
+    if (discovered.alternateMetrics) {
+      console.log("  Alternate patterns available:", Object.keys(discovered.alternateMetrics).join(", "));
+    }
+    if (!discovered.metrics.latency && !discovered.metrics.throughput) {
+      return {
+        success: false,
+        error: `Insufficient metrics found for service "${input.service}". Found: ${discovered.discovered.join(", ")}. Need at least latency or throughput metrics.`
+      };
+    }
+    const queries = [];
+    const queryTypes = [];
+    if (discovered.metrics.errors) {
+      const errorRateQuery = input.environment ? `avg:${discovered.metrics.errors}{service:${input.service},env:${input.environment}}.as_rate()` : `avg:${discovered.metrics.errors}{service:${input.service}}.as_rate()`;
+      console.log("\nError Rate Query:", errorRateQuery);
+      queries.push(
+        datadogClient.queryMetrics({ query: errorRateQuery, from, to })
+      );
+      queryTypes.push("errors");
+    } else {
+      console.log("\n⚠️  No error metrics available");
+      queries.push(Promise.resolve({ series: [] }));
+      queryTypes.push("errors");
+    }
+    if (discovered.metrics.latency) {
+      const latencyQuery = input.environment ? `p95:${discovered.metrics.latency}{service:${input.service},env:${input.environment}}` : `p95:${discovered.metrics.latency}{service:${input.service}}`;
+      console.log("Latency Query:", latencyQuery);
+      queries.push(
+        datadogClient.queryMetrics({ query: latencyQuery, from, to })
+      );
+      queryTypes.push("latency");
+    } else {
+      console.log("⚠️  No latency metrics available");
+      queries.push(Promise.resolve({ series: [] }));
+      queryTypes.push("latency");
+    }
+    if (discovered.metrics.throughput) {
+      const throughputQuery = input.environment ? `sum:${discovered.metrics.throughput}{service:${input.service},env:${input.environment}}.as_count()` : `sum:${discovered.metrics.throughput}{service:${input.service}}.as_count()`;
+      console.log("Throughput Query:", throughputQuery);
+      queries.push(
+        datadogClient.queryMetrics({ query: throughputQuery, from, to })
+      );
+      queryTypes.push("throughput");
+    } else {
+      console.log("⚠️  No throughput metrics available");
+      queries.push(Promise.resolve({ series: [] }));
+      queryTypes.push("throughput");
+    }
+    queries.push(
+      datadogClient.getMonitors({ tags: [`service:${input.service}`] })
+    );
+    queryTypes.push("monitors");
+    const [errorRateResponse, latencyResponse, throughputResponse, monitors] = await Promise.all(queries);
+    console.log("\n=== Datadog Responses ===");
+    console.log("Error Rate Response:", JSON.stringify({
+      status: errorRateResponse.status,
+      seriesCount: errorRateResponse.series?.length || 0,
+      hasData: errorRateResponse.series && errorRateResponse.series.length > 0
+    }, null, 2));
+    console.log("Latency Response:", JSON.stringify({
+      status: latencyResponse.status,
+      seriesCount: latencyResponse.series?.length || 0,
+      hasData: latencyResponse.series && latencyResponse.series.length > 0
+    }, null, 2));
+    console.log("Throughput Response:", JSON.stringify({
+      status: throughputResponse.status,
+      seriesCount: throughputResponse.series?.length || 0,
+      hasData: throughputResponse.series && throughputResponse.series.length > 0
+    }, null, 2));
+    console.log("Monitors Count:", monitors.length);
     const errorRate = getLatestValue(errorRateResponse.series) || 0;
     const p95Latency = getLatestValue(latencyResponse.series) || 0;
     const throughput = getLatestValue(throughputResponse.series) || 0;
+    console.log("\n=== Extracted Values ===");
+    console.log("Error Rate:", errorRate);
+    console.log("P95 Latency:", p95Latency);
+    console.log("Throughput:", throughput);
     const activeAlerts = monitors.filter(
       (m) => m.overallState === "Alert" || m.overallState === "Warn"
     ).length;
@@ -2280,6 +2978,74 @@ async function getServiceHealth(input) {
     if (throughput === 0) {
       status = "unknown";
     }
+    let recentErrorTraces = [];
+    if (status === "degraded" || status === "down") {
+      try {
+        console.log("\n--- Fetching Recent Error Traces ---");
+        const errorQuery = new DatadogQueryBuilder().service(input.service).spanKind("entry").status("error").build();
+        if (input.environment) {
+          const errorQueryWithEnv = new DatadogQueryBuilder().service(input.service).spanKind("entry").status("error").environment(input.environment).build();
+          console.log("Error trace query:", errorQueryWithEnv);
+          const errorTraceResponse = await datadogClient.listSpans({
+            query: errorQueryWithEnv,
+            from,
+            to,
+            sort: "-timestamp",
+            pageLimit: 5
+            // Just get last 5 errors
+          });
+          if (errorTraceResponse.data && errorTraceResponse.data.length > 0) {
+            recentErrorTraces = errorTraceResponse.data.map((span) => {
+              const attributes = span.attributes;
+              const traceId = attributes?.tags?.find((t) => t.startsWith("trace_id:"))?.split(":")[1];
+              const resource = attributes?.attributes?.resource_name || "unknown";
+              const errorType = attributes?.attributes?.["@error.type"];
+              const errorMessage = attributes?.attributes?.["@error.message"];
+              const timestamp = attributes?.attributes?.start || (/* @__PURE__ */ new Date()).toISOString();
+              return {
+                traceId,
+                resource,
+                errorType,
+                errorMessage,
+                timestamp,
+                datadogUrl: traceId ? `https://app.datadoghq.com/apm/trace/${traceId}` : void 0
+              };
+            }).filter((t) => t.traceId);
+            console.log(`✅ Found ${recentErrorTraces.length} recent error traces`);
+          }
+        } else {
+          console.log("Error trace query:", errorQuery);
+          const errorTraceResponse = await datadogClient.listSpans({
+            query: errorQuery,
+            from,
+            to,
+            sort: "-timestamp",
+            pageLimit: 5
+          });
+          if (errorTraceResponse.data && errorTraceResponse.data.length > 0) {
+            recentErrorTraces = errorTraceResponse.data.map((span) => {
+              const attributes = span.attributes;
+              const traceId = attributes?.tags?.find((t) => t.startsWith("trace_id:"))?.split(":")[1];
+              const resource = attributes?.attributes?.resource_name || "unknown";
+              const errorType = attributes?.attributes?.["@error.type"];
+              const errorMessage = attributes?.attributes?.["@error.message"];
+              const timestamp = attributes?.attributes?.start || (/* @__PURE__ */ new Date()).toISOString();
+              return {
+                traceId,
+                resource,
+                errorType,
+                errorMessage,
+                timestamp,
+                datadogUrl: traceId ? `https://app.datadoghq.com/apm/trace/${traceId}` : void 0
+              };
+            }).filter((t) => t.traceId);
+            console.log(`✅ Found ${recentErrorTraces.length} recent error traces`);
+          }
+        }
+      } catch (traceError) {
+        console.log("⚠️  Could not fetch error traces:", traceError);
+      }
+    }
     const result = {
       service: input.service,
       status,
@@ -2290,6 +3056,7 @@ async function getServiceHealth(input) {
         throughput: Number(throughput.toFixed(2))
       },
       activeAlerts,
+      recentErrors: recentErrorTraces.length > 0 ? recentErrorTraces : void 0,
       lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
     };
     cache.set(cacheKey, result, 30 * 1e3);
@@ -2390,6 +3157,559 @@ async function searchLogs(input) {
     };
   }
 }
+function createStandardComputes() {
+  return [
+    // Total request count
+    {
+      aggregation: "count",
+      type: "total"
+    },
+    // Error count
+    {
+      aggregation: "count",
+      metric: "@error",
+      type: "total"
+    },
+    // p50 latency
+    {
+      aggregation: "pc50",
+      metric: "@duration",
+      type: "total"
+    },
+    // p95 latency
+    {
+      aggregation: "pc95",
+      metric: "@duration",
+      type: "total"
+    },
+    // p99 latency
+    {
+      aggregation: "pc99",
+      metric: "@duration",
+      type: "total"
+    }
+  ];
+}
+function createGroupByResource(limit = 100) {
+  return {
+    facet: "resource_name",
+    limit,
+    sort: {
+      aggregation: "count",
+      order: "desc",
+      type: "measure"
+    }
+  };
+}
+function extractComputeValue(computes, index) {
+  if (!computes) return 0;
+  const key = `c${index}`;
+  return computes[key] !== void 0 ? computes[key] : 0;
+}
+function parseOperationMetrics(computes) {
+  const requestCount = extractComputeValue(computes, 0);
+  const errorCount = extractComputeValue(computes, 1);
+  const p50Latency = extractComputeValue(computes, 2) / 1e6;
+  const p95Latency = extractComputeValue(computes, 3) / 1e6;
+  const p99Latency = extractComputeValue(computes, 4) / 1e6;
+  const errorRate = requestCount > 0 ? errorCount / requestCount * 100 : 0;
+  return {
+    requestCount,
+    errorCount,
+    p50Latency: Number(p50Latency.toFixed(2)),
+    p95Latency: Number(p95Latency.toFixed(2)),
+    p99Latency: Number(p99Latency.toFixed(2)),
+    errorRate: Number(errorRate.toFixed(2))
+  };
+}
+async function getServiceOperations(input) {
+  try {
+    if (!validateServiceName(input.service)) {
+      return {
+        success: false,
+        error: "Invalid service name. Use alphanumeric characters, dashes, and underscores only."
+      };
+    }
+    const cache = getCache();
+    const cacheKey = generateCacheKey("service-operations-v2", input);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log(`Cache hit for ${cacheKey}`);
+      return {
+        success: true,
+        data: cached,
+        cached: true
+      };
+    }
+    const timeRange = input.timeRange || "1h";
+    const { from, to } = parseTimeRange(timeRange);
+    console.log("\n=== Get Service Operations (Hybrid Approach) ===");
+    console.log("Service:", input.service);
+    console.log("Environment:", input.environment || "all");
+    console.log("Time range:", timeRange, `(${new Date(from).toISOString()} to ${new Date(to).toISOString()})`);
+    console.log("\n--- Strategy 1: Trace Metrics Approach ---");
+    const traceMetricsResult = await tryTraceMetricsApproach(input, from, to);
+    if (traceMetricsResult) {
+      console.log("✅ Trace metrics approach succeeded");
+      cache.set(cacheKey, traceMetricsResult, 2 * 60 * 1e3);
+      return {
+        success: true,
+        data: traceMetricsResult,
+        metadata: { cached: false }
+      };
+    }
+    console.log("⚠️  Trace metrics approach failed, falling back to Spans API");
+    console.log("\n--- Strategy 2: Spans API Approach ---");
+    const spansApiResult = await spansApiApproach(input, from, to);
+    if (!spansApiResult) {
+      return {
+        success: false,
+        error: `No APM data found for service "${input.service}". The service may not be instrumented, or there's no traffic in the selected time range.`
+      };
+    }
+    console.log("✅ Spans API approach succeeded");
+    cache.set(cacheKey, spansApiResult, 2 * 60 * 1e3);
+    return {
+      success: true,
+      data: spansApiResult,
+      metadata: { cached: false }
+    };
+  } catch (error) {
+    console.error("Error getting service operations:", error);
+    return {
+      success: false,
+      error: formatErrorMessage(error)
+    };
+  }
+}
+async function tryTraceMetricsApproach(input, from, to) {
+  try {
+    const datadogClient = getDatadogClient();
+    console.log("Discovering trace metrics for service...");
+    const discovered = await discoverServiceMetrics(
+      input.service,
+      input.environment,
+      from,
+      to
+    );
+    if (!discovered || !discovered.metrics.latency) {
+      console.log("No trace metrics discovered");
+      return null;
+    }
+    console.log(`Found trace metric pattern: ${discovered.metrics.latency}`);
+    const latencyQuery = input.environment ? `${discovered.metrics.latency}{service:${input.service},env:${input.environment}} by {resource_name}` : `${discovered.metrics.latency}{service:${input.service}} by {resource_name}`;
+    console.log("Querying trace metrics:", latencyQuery);
+    const latencyResponse = await datadogClient.queryMetrics({
+      query: latencyQuery,
+      from,
+      to
+    });
+    if (!latencyResponse.series || latencyResponse.series.length === 0) {
+      console.log("No resource_name breakdown in trace metrics");
+      return null;
+    }
+    console.log(`Got ${latencyResponse.series.length} resources from trace metrics`);
+    const operations = [];
+    for (const series of latencyResponse.series) {
+      const resourceName = series.scope?.split("resource_name:")[1]?.split(",")[0];
+      if (!resourceName) continue;
+      const pointlist = series.pointlist || [];
+      if (pointlist.length === 0) continue;
+      const latestPoint = pointlist[pointlist.length - 1];
+      const latencyMs = latestPoint[1] || 0;
+      operations.push({
+        name: resourceName,
+        resource: resourceName,
+        metrics: {
+          requestCount: 0,
+          // Not available from single metrics query
+          errorCount: 0,
+          p50Latency: 0,
+          p95Latency: latencyMs,
+          p99Latency: 0,
+          errorRate: 0
+        }
+      });
+    }
+    if (operations.length === 0) {
+      return null;
+    }
+    return {
+      service: input.service,
+      environment: input.environment,
+      timeRange: input.timeRange || "1h",
+      totalOperations: operations.length,
+      operations,
+      dataSource: "trace-metrics",
+      lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  } catch (error) {
+    console.log("Trace metrics approach error:", error);
+    return null;
+  }
+}
+async function spansApiApproach(input, from, to) {
+  try {
+    const datadogClient = getDatadogClient();
+    const query = buildServiceEntryQuery(input.service, input.environment);
+    console.log("Querying Spans API...");
+    console.log("Query:", query);
+    console.log("Filter: Only entry spans (service-level operations)");
+    const response = await datadogClient.aggregateSpans({
+      query,
+      from,
+      to,
+      compute: createStandardComputes(),
+      groupBy: [createGroupByResource(100)]
+    });
+    if (!response.data?.buckets || response.data.buckets.length === 0) {
+      console.log("No buckets returned from Spans API");
+      return null;
+    }
+    console.log(`Got ${response.data.buckets.length} operations from Spans API`);
+    const operations = [];
+    for (const bucket of response.data.buckets) {
+      const by = bucket.by;
+      const computes = bucket.computes;
+      const resource = by?.resource_name;
+      if (!resource) continue;
+      const metrics = parseOperationMetrics(computes);
+      operations.push({
+        name: resource,
+        resource,
+        metrics
+      });
+    }
+    if (operations.length === 0) {
+      return null;
+    }
+    console.log(`
+✅ Parsed ${operations.length} operations`);
+    console.log("Top 5 operations by traffic:");
+    operations.slice(0, 5).forEach((op, i) => {
+      console.log(`  ${i + 1}. ${op.name}`);
+      console.log(`     Requests: ${op.metrics.requestCount}, P95: ${op.metrics.p95Latency}ms, Errors: ${op.metrics.errorRate}%`);
+    });
+    return {
+      service: input.service,
+      environment: input.environment,
+      timeRange: input.timeRange || "1h",
+      totalOperations: operations.length,
+      operations,
+      dataSource: "spans-api",
+      lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  } catch (error) {
+    console.error("Spans API approach error:", error);
+    return null;
+  }
+}
+async function queryApmTraces(input) {
+  try {
+    if (!validateServiceName(input.service)) {
+      return {
+        success: false,
+        error: "Invalid service name. Use alphanumeric characters, dashes, and underscores only."
+      };
+    }
+    const cache = getCache();
+    const cacheKey = generateCacheKey("query-apm-traces", input);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log(`Cache hit for ${cacheKey}`);
+      return {
+        success: true,
+        data: cached,
+        cached: true
+      };
+    }
+    const timeRange = input.timeRange || "1h";
+    const { from, to } = parseTimeRange(timeRange);
+    const limit = input.limit || 20;
+    const sortBy = input.sortBy || "duration";
+    console.log("\n=== Query APM Traces ===");
+    console.log("Service:", input.service);
+    console.log("Operation:", input.operation || "all");
+    console.log("Environment:", input.environment || "all");
+    console.log("Time range:", timeRange, `(${new Date(from).toISOString()} to ${new Date(to).toISOString()})`);
+    console.log("Status filter:", input.status || "all");
+    console.log("Duration range:", input.minDurationMs || "none", "-", input.maxDurationMs || "none");
+    console.log("HTTP status code:", input.httpStatusCode || "all");
+    console.log("HTTP method:", input.httpMethod || "all");
+    console.log("Error type:", input.errorType || "all");
+    console.log("Span type:", input.spanType || "all");
+    console.log("Sort by:", sortBy);
+    console.log("Limit:", limit);
+    const queryBuilder = new DatadogQueryBuilder().service(input.service).spanKind("entry");
+    if (input.environment) {
+      queryBuilder.environment(input.environment);
+    }
+    if (input.operation) {
+      queryBuilder.operation(input.operation);
+    }
+    if (input.status) {
+      queryBuilder.status(input.status);
+    }
+    if (input.minDurationMs !== void 0 && input.maxDurationMs !== void 0) {
+      queryBuilder.durationBetween(input.minDurationMs, input.maxDurationMs);
+    } else {
+      if (input.minDurationMs !== void 0) {
+        queryBuilder.durationGreaterThan(input.minDurationMs);
+      }
+      if (input.maxDurationMs !== void 0) {
+        queryBuilder.durationLessThan(input.maxDurationMs);
+      }
+    }
+    if (input.httpStatusCode !== void 0) {
+      queryBuilder.httpStatusCode(input.httpStatusCode);
+    }
+    if (input.httpMethod) {
+      queryBuilder.httpMethod(input.httpMethod);
+    }
+    if (input.errorType) {
+      queryBuilder.errorType(input.errorType);
+    }
+    if (input.spanType) {
+      queryBuilder.spanType(input.spanType);
+    }
+    const query = queryBuilder.build();
+    console.log("Query:", query);
+    const datadogClient = getDatadogClient();
+    const response = await datadogClient.listSpans({
+      query,
+      from,
+      to,
+      sort: sortBy === "duration" ? "-duration" : "-timestamp",
+      // '-' for descending
+      pageLimit: limit
+    });
+    if (!response.data || response.data.length === 0) {
+      console.log("No traces found matching criteria");
+      return {
+        success: false,
+        error: `No traces found for service "${input.service}" with the specified filters.`
+      };
+    }
+    console.log(`Found ${response.data.length} traces`);
+    const traces = [];
+    for (const span of response.data) {
+      const attributes = span.attributes;
+      if (!attributes) continue;
+      const traceId = attributes.tags?.find((t) => t.startsWith("trace_id:"))?.split(":")[1];
+      const spanId = attributes.tags?.find((t) => t.startsWith("span_id:"))?.split(":")[1];
+      const resource = attributes.attributes?.resource_name || "unknown";
+      const durationNs = attributes.attributes?.duration || 0;
+      const durationMs = Number((durationNs / 1e6).toFixed(2));
+      const status = attributes.attributes?.status || "ok";
+      const errorType = attributes.attributes?.["@error.type"];
+      const errorMessage = attributes.attributes?.["@error.message"];
+      const timestamp = attributes.attributes?.start || (/* @__PURE__ */ new Date()).toISOString();
+      if (!traceId || !spanId) continue;
+      const datadogUrl = `https://app.datadoghq.com/apm/trace/${traceId}`;
+      traces.push({
+        traceId,
+        spanId,
+        timestamp,
+        resource,
+        duration: durationMs,
+        status: status === "error" ? "error" : "ok",
+        errorType,
+        errorMessage,
+        datadogUrl
+      });
+    }
+    if (traces.length === 0) {
+      return {
+        success: false,
+        error: "Found spans but could not parse trace IDs. Data format may have changed."
+      };
+    }
+    const result = {
+      service: input.service,
+      operation: input.operation,
+      environment: input.environment,
+      timeRange,
+      totalTraces: traces.length,
+      traces,
+      filters: {
+        status: input.status,
+        minDurationMs: input.minDurationMs,
+        maxDurationMs: input.maxDurationMs,
+        httpStatusCode: input.httpStatusCode,
+        httpMethod: input.httpMethod,
+        errorType: input.errorType,
+        spanType: input.spanType
+      },
+      lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    console.log(`
+✅ Parsed ${traces.length} traces`);
+    console.log("Top 3 traces:");
+    traces.slice(0, 3).forEach((trace, i) => {
+      console.log(`  ${i + 1}. ${trace.resource}`);
+      console.log(`     Duration: ${trace.duration}ms, Status: ${trace.status}`);
+      console.log(`     URL: ${trace.datadogUrl}`);
+    });
+    cache.set(cacheKey, result, 60 * 1e3);
+    return {
+      success: true,
+      data: result,
+      metadata: { cached: false }
+    };
+  } catch (error) {
+    console.error("Error querying APM traces:", error);
+    return {
+      success: false,
+      error: formatErrorMessage(error)
+    };
+  }
+}
+async function getMonitors(input) {
+  try {
+    const cache = getCache();
+    const cacheKey = generateCacheKey("get-monitors", input);
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log(`Cache hit for ${cacheKey}`);
+      return {
+        success: true,
+        data: cached,
+        cached: true
+      };
+    }
+    console.log("\n=== Get Monitors ===");
+    console.log("Service:", input.service || "all");
+    console.log("Status filter:", input.status || "all");
+    console.log("Monitor type:", input.monitorType || "all");
+    console.log("Tags:", input.tags?.join(", ") || "none");
+    const datadogClient = getDatadogClient();
+    const monitorTags = [];
+    if (input.service) {
+      monitorTags.push(`service:${input.service}`);
+    }
+    if (input.tags && input.tags.length > 0) {
+      monitorTags.push(...input.tags);
+    }
+    const params = {};
+    if (monitorTags.length > 0) {
+      params.monitorTags = monitorTags;
+    }
+    console.log("Querying monitors with params:", JSON.stringify(params, null, 2));
+    const monitors = await datadogClient.getMonitors(params);
+    console.log(`Found ${monitors.length} monitors`);
+    let filteredMonitors = monitors;
+    if (input.status) {
+      const statusFilter = input.status.toLowerCase();
+      filteredMonitors = filteredMonitors.filter((m) => {
+        const status = (m.overallState || "unknown").toLowerCase();
+        if (statusFilter === "no data") {
+          return status === "no data" || status === "nodata";
+        }
+        return status === statusFilter;
+      });
+      console.log(`After status filter: ${filteredMonitors.length} monitors`);
+    }
+    if (input.monitorType) {
+      filteredMonitors = filteredMonitors.filter((m) => {
+        return m.type === input.monitorType;
+      });
+      console.log(`After type filter: ${filteredMonitors.length} monitors`);
+    }
+    const parsedMonitors = [];
+    const statusCounts = {
+      alert: 0,
+      warn: 0,
+      ok: 0,
+      noData: 0,
+      unknown: 0
+    };
+    for (const monitor of filteredMonitors) {
+      const status = normalizeStatus(monitor.overallState);
+      switch (status) {
+        case "Alert":
+          statusCounts.alert++;
+          break;
+        case "Warn":
+          statusCounts.warn++;
+          break;
+        case "OK":
+          statusCounts.ok++;
+          break;
+        case "No Data":
+          statusCounts.noData++;
+          break;
+        default:
+          statusCounts.unknown++;
+      }
+      parsedMonitors.push({
+        id: monitor.id,
+        name: monitor.name || "Unnamed Monitor",
+        type: monitor.type || "unknown",
+        status,
+        message: monitor.message,
+        tags: monitor.tags || [],
+        query: monitor.query,
+        creator: monitor.creator?.email,
+        created: monitor.created ? new Date(monitor.created).toISOString() : void 0,
+        modified: monitor.modified ? new Date(monitor.modified).toISOString() : void 0,
+        datadogUrl: `https://app.datadoghq.com/monitors/${monitor.id}`
+      });
+    }
+    parsedMonitors.sort((a, b) => {
+      const severityOrder = { "Alert": 0, "Warn": 1, "No Data": 2, "OK": 3, "Unknown": 4 };
+      return severityOrder[a.status] - severityOrder[b.status];
+    });
+    const result = {
+      filters: {
+        service: input.service,
+        status: input.status,
+        tags: input.tags,
+        monitorType: input.monitorType
+      },
+      totalMonitors: parsedMonitors.length,
+      monitors: parsedMonitors,
+      byStatus: statusCounts,
+      lastUpdated: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    console.log(`
+✅ Found ${parsedMonitors.length} monitors`);
+    console.log("Status breakdown:");
+    console.log(`  Alert: ${statusCounts.alert}`);
+    console.log(`  Warn: ${statusCounts.warn}`);
+    console.log(`  OK: ${statusCounts.ok}`);
+    console.log(`  No Data: ${statusCounts.noData}`);
+    console.log(`  Unknown: ${statusCounts.unknown}`);
+    if (parsedMonitors.length > 0) {
+      console.log("\nTop 5 monitors:");
+      parsedMonitors.slice(0, 5).forEach((m, i) => {
+        console.log(`  ${i + 1}. [${m.status}] ${m.name}`);
+        console.log(`     Type: ${m.type}, ID: ${m.id}`);
+        console.log(`     URL: ${m.datadogUrl}`);
+      });
+    }
+    cache.set(cacheKey, result, 2 * 60 * 1e3);
+    return {
+      success: true,
+      data: result,
+      metadata: { cached: false }
+    };
+  } catch (error) {
+    console.error("Error getting monitors:", error);
+    return {
+      success: false,
+      error: formatErrorMessage(error)
+    };
+  }
+}
+function normalizeStatus(state) {
+  if (!state) return "Unknown";
+  const normalized = state.toLowerCase();
+  if (normalized === "alert") return "Alert";
+  if (normalized === "warn") return "Warn";
+  if (normalized === "ok") return "OK";
+  if (normalized === "no data" || normalized === "nodata") return "No Data";
+  return "Unknown";
+}
 class ChatHandler {
   llmManager = getLLMManager();
   mcpTools = [];
@@ -2422,7 +3742,7 @@ class ChatHandler {
             },
             environment: {
               type: "string",
-              description: 'Optional environment filter (e.g., "production", "staging")'
+              description: "Optional environment filter. Examples: production, uat, bluesteel, int, rc, integration, k8s-prod, navigation-prod-3"
             },
             aggregation: {
               type: "string",
@@ -2445,7 +3765,7 @@ class ChatHandler {
             },
             environment: {
               type: "string",
-              description: "Optional environment filter"
+              description: "Optional environment filter. Examples: production, uat, bluesteel, int, rc, integration, k8s-prod, navigation-prod-3"
             }
           },
           required: ["service"]
@@ -2475,6 +3795,122 @@ class ChatHandler {
             }
           },
           required: ["service", "query", "timeRange"]
+        }
+      },
+      {
+        name: "get_service_operations",
+        description: "Get all operations/endpoints for a service with detailed performance metrics using APM Spans API. Shows request count, error rate, and latency percentiles (p50, p95, p99) for each operation.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            service: {
+              type: "string",
+              description: "The service name to get operations for"
+            },
+            environment: {
+              type: "string",
+              description: "Optional environment filter. Examples: production, uat, bluesteel, int, rc, integration, k8s-prod, navigation-prod-3. Supports both env: and environment: tags in Datadog."
+            },
+            timeRange: {
+              type: "string",
+              description: 'Time range for metrics (e.g., "1h", "24h", "7d"). Default: "1h"'
+            }
+          },
+          required: ["service"]
+        }
+      },
+      {
+        name: "query_apm_traces",
+        description: "Query APM traces with flexible filtering to find specific trace samples. Useful for debugging slow requests, errors, or specific operations. Returns trace IDs with deep links to Datadog UI for detailed analysis.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            service: {
+              type: "string",
+              description: "The service name to query traces for"
+            },
+            operation: {
+              type: "string",
+              description: "Optional operation/endpoint filter (resource_name)"
+            },
+            environment: {
+              type: "string",
+              description: "Optional environment filter. Examples: production, uat, bluesteel, int, rc, integration, k8s-prod, navigation-prod-3. Supports both env: and environment: tags."
+            },
+            timeRange: {
+              type: "string",
+              description: 'Time range for traces (e.g., "1h", "24h", "7d"). Default: "1h"'
+            },
+            status: {
+              type: "string",
+              enum: ["ok", "error"],
+              description: "Filter by trace status (ok or error)"
+            },
+            minDurationMs: {
+              type: "number",
+              description: "Minimum duration in milliseconds (e.g., 1000 for traces slower than 1s)"
+            },
+            maxDurationMs: {
+              type: "number",
+              description: "Maximum duration in milliseconds"
+            },
+            httpStatusCode: {
+              type: "number",
+              description: "Filter by HTTP status code (e.g., 500, 404, 200)"
+            },
+            httpMethod: {
+              type: "string",
+              description: 'Filter by HTTP method (e.g., "GET", "POST", "PUT", "DELETE")'
+            },
+            errorType: {
+              type: "string",
+              description: 'Filter by error type (e.g., "java.lang.NullPointerException", "TimeoutError")'
+            },
+            spanType: {
+              type: "string",
+              enum: ["web", "db", "cache", "http", "grpc"],
+              description: "Filter by span type"
+            },
+            sortBy: {
+              type: "string",
+              enum: ["duration", "timestamp"],
+              description: 'Sort results by duration (slowest first) or timestamp (most recent first). Default: "duration"'
+            },
+            limit: {
+              type: "number",
+              description: "Maximum number of traces to return (default: 20)"
+            }
+          },
+          required: ["service"]
+        }
+      },
+      {
+        name: "get_monitors",
+        description: "Get monitors with flexible filtering. Returns monitor details including status, configuration, and deep links to Datadog UI. Useful for checking alerting status, finding all monitors for a service, or identifying currently firing alerts.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            service: {
+              type: "string",
+              description: "Filter monitors by service tag (service:value)"
+            },
+            status: {
+              type: "string",
+              enum: ["alert", "warn", "no data", "ok"],
+              description: "Filter by monitor status"
+            },
+            tags: {
+              type: "array",
+              items: { type: "string" },
+              description: 'Filter by additional tags (e.g., ["env:production", "team:platform"])'
+            },
+            monitorType: {
+              type: "string",
+              enum: ["metric alert", "service check", "event alert", "query alert", "composite", "log alert", "apm", "rum alert", "ci-pipelines alert", "error-tracking alert", "slo alert"],
+              description: "Filter by monitor type"
+            }
+          },
+          required: []
         }
       }
     ];
@@ -2576,8 +4012,13 @@ class ChatHandler {
    * Execute MCP tool calls
    */
   async executeToolCalls(toolCalls) {
+    console.log("=== Executing Tool Calls ===");
+    console.log("Number of tools to execute:", toolCalls.length);
     const results = await Promise.all(
       toolCalls.map(async (toolCall) => {
+        console.log(`
+--- Executing ${toolCall.name} ---`);
+        console.log("Tool input:", JSON.stringify(toolCall.input, null, 2));
         try {
           let result;
           switch (toolCall.name) {
@@ -2590,12 +4031,22 @@ class ChatHandler {
             case "search_logs":
               result = await searchLogs(toolCall.input);
               break;
+            case "get_service_operations":
+              result = await getServiceOperations(toolCall.input);
+              break;
+            case "query_apm_traces":
+              result = await queryApmTraces(toolCall.input);
+              break;
+            case "get_monitors":
+              result = await getMonitors(toolCall.input);
+              break;
             default:
               result = {
                 success: false,
                 error: `Unknown tool: ${toolCall.name}`
               };
           }
+          console.log(`Tool ${toolCall.name} result:`, JSON.stringify(result, null, 2));
           return {
             ...toolCall,
             result

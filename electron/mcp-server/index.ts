@@ -10,6 +10,9 @@ import {
 import { queryAPMMetrics } from './tools/query-apm-metrics';
 import { getServiceHealth } from './tools/get-service-health';
 import { searchLogs } from './tools/search-logs';
+import { getServiceOperations } from './tools/get-service-operations';
+import { queryApmTraces } from './tools/query-apm-traces';
+import { getMonitors } from './tools/get-monitors';
 
 /**
  * MCP Server for Datadog Integration
@@ -62,7 +65,7 @@ export class DocBuddyMCPServer {
               },
               environment: {
                 type: 'string',
-                description: 'Optional environment filter (e.g., "production", "staging")',
+                description: 'Optional environment filter. Examples: production, uat, bluesteel, int, rc, integration, k8s-prod, navigation-prod-3. Use the exact environment name from Datadog.',
               },
               aggregation: {
                 type: 'string',
@@ -86,7 +89,7 @@ export class DocBuddyMCPServer {
               },
               environment: {
                 type: 'string',
-                description: 'Optional environment filter',
+                description: 'Optional environment filter. Examples: production, uat, bluesteel, int, rc, integration, k8s-prod, navigation-prod-3. Use the exact environment name from Datadog.',
               },
             },
             required: ['service'],
@@ -117,6 +120,125 @@ export class DocBuddyMCPServer {
               },
             },
             required: ['service', 'query', 'timeRange'],
+          },
+        },
+        {
+          name: 'get_service_operations',
+          description:
+            'Get all operations/endpoints for a service with detailed performance metrics using APM Spans API. Shows request count, error rate, and latency percentiles (p50, p95, p99) for each operation.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              service: {
+                type: 'string',
+                description: 'The service name to get operations for',
+              },
+              environment: {
+                type: 'string',
+                description: 'Optional environment filter (e.g., "production", "uat", "bluesteel", "int", "rc", "integration", "k8s-prod", "navigation-prod-3"). Supports both env: and environment: tags.',
+              },
+              timeRange: {
+                type: 'string',
+                description: 'Time range for metrics (e.g., "1h", "24h", "7d"). Default: "1h"',
+              },
+            },
+            required: ['service'],
+          },
+        },
+        {
+          name: 'query_apm_traces',
+          description:
+            'Query APM traces with flexible filtering to find specific trace samples. Useful for debugging slow requests, errors, or specific operations. Returns trace IDs with deep links to Datadog UI for detailed analysis.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              service: {
+                type: 'string',
+                description: 'The service name to query traces for',
+              },
+              operation: {
+                type: 'string',
+                description: 'Optional operation/endpoint filter (resource_name)',
+              },
+              environment: {
+                type: 'string',
+                description: 'Optional environment filter (e.g., "production", "uat", "bluesteel", "int", "rc", "integration", "k8s-prod", "navigation-prod-3"). Supports both env: and environment: tags.',
+              },
+              timeRange: {
+                type: 'string',
+                description: 'Time range for traces (e.g., "1h", "24h", "7d"). Default: "1h"',
+              },
+              status: {
+                type: 'string',
+                enum: ['ok', 'error'],
+                description: 'Filter by trace status (ok or error)',
+              },
+              minDurationMs: {
+                type: 'number',
+                description: 'Minimum duration in milliseconds (e.g., 1000 for traces slower than 1s)',
+              },
+              maxDurationMs: {
+                type: 'number',
+                description: 'Maximum duration in milliseconds',
+              },
+              httpStatusCode: {
+                type: 'number',
+                description: 'Filter by HTTP status code (e.g., 500, 404, 200)',
+              },
+              httpMethod: {
+                type: 'string',
+                description: 'Filter by HTTP method (e.g., "GET", "POST", "PUT", "DELETE")',
+              },
+              errorType: {
+                type: 'string',
+                description: 'Filter by error type (e.g., "java.lang.NullPointerException", "TimeoutError")',
+              },
+              spanType: {
+                type: 'string',
+                enum: ['web', 'db', 'cache', 'http', 'grpc'],
+                description: 'Filter by span type',
+              },
+              sortBy: {
+                type: 'string',
+                enum: ['duration', 'timestamp'],
+                description: 'Sort results by duration (slowest first) or timestamp (most recent first). Default: "duration"',
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum number of traces to return (default: 20)',
+              },
+            },
+            required: ['service'],
+          },
+        },
+        {
+          name: 'get_monitors',
+          description:
+            'Get monitors with flexible filtering. Returns monitor details including status, configuration, and deep links to Datadog UI. Useful for checking alerting status, finding all monitors for a service, or identifying currently firing alerts.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              service: {
+                type: 'string',
+                description: 'Filter monitors by service tag (service:value)',
+              },
+              status: {
+                type: 'string',
+                enum: ['alert', 'warn', 'no data', 'ok'],
+                description: 'Filter by monitor status',
+              },
+              tags: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Filter by additional tags (e.g., ["env:production", "team:platform"])',
+              },
+              monitorType: {
+                type: 'string',
+                enum: ['metric alert', 'service check', 'event alert', 'query alert', 'composite', 'log alert', 'apm', 'rum alert', 'ci-pipelines alert', 'error-tracking alert', 'slo alert'],
+                description: 'Filter by monitor type',
+              },
+            },
+            required: [],
           },
         },
       ];
@@ -158,6 +280,42 @@ export class DocBuddyMCPServer {
 
           case 'search_logs': {
             const result = await searchLogs(args as any);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'get_service_operations': {
+            const result = await getServiceOperations(args as any);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'query_apm_traces': {
+            const result = await queryApmTraces(args as any);
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case 'get_monitors': {
+            const result = await getMonitors(args as any);
             return {
               content: [
                 {

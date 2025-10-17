@@ -78,6 +78,14 @@ export interface ServiceHealthResult {
     throughput: number;
   };
   activeAlerts: number;
+  recentErrors?: Array<{
+    traceId: string;
+    resource: string;
+    errorType?: string;
+    errorMessage?: string;
+    timestamp: string;
+    datadogUrl?: string;
+  }>;
   lastUpdated: string;
 }
 

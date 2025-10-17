@@ -21,6 +21,7 @@ export class DatadogClient {
     if (apiKey && appKey) {
       // Use API key authentication (simpler but less secure)
       console.log('Using Datadog API key authentication');
+
       this.configuration = client.createConfiguration({
         authMethods: {
           apiKeyAuth: apiKey,
@@ -38,6 +39,7 @@ export class DatadogClient {
       }
 
       console.log('Using Datadog OAuth authentication');
+
       this.configuration = client.createConfiguration({
         authMethods: {
           apiKeyAuth: accessToken,
@@ -46,9 +48,7 @@ export class DatadogClient {
       });
     }
 
-    // Set base path based on site
-    const site = process.env.DD_SITE || 'datadoghq.com';
-    this.configuration.baseServer = new client.Server(`https://api.${site}`, {});
+    console.log('Datadog configuration created (using default: api.datadoghq.com)');
 
     return this.configuration;
   }
@@ -211,6 +211,153 @@ export class DatadogClient {
         },
       });
 
+      return response;
+    });
+  }
+
+  /**
+   * Search for metrics by query string (supports wildcards)
+   */
+  async listMetrics(query: string): Promise<v1.MetricSearchResponse> {
+    const config = await this.getConfiguration();
+    const metricsApi = new v1.MetricsApi(config);
+
+    return retryWithBackoff(async () => {
+      const response = await metricsApi.listMetrics({
+        q: query,
+      });
+      return response;
+    });
+  }
+
+  /**
+   * List active metrics with optional tag filtering
+   */
+  async listActiveMetrics(params: {
+    from: number;
+    host?: string;
+    tagFilter?: string;
+  }): Promise<v1.MetricsListResponse> {
+    const config = await this.getConfiguration();
+    const metricsApi = new v1.MetricsApi(config);
+
+    return retryWithBackoff(async () => {
+      const response = await metricsApi.listActiveMetrics({
+        from: Math.floor(params.from / 1000), // Convert to seconds
+        host: params.host,
+        tagFilter: params.tagFilter,
+      });
+      return response;
+    });
+  }
+
+  /**
+   * List tags for a specific metric name (v2 API)
+   * Returns all tag key-value pairs for the metric
+   */
+  async listTagsByMetricName(metricName: string): Promise<v2.MetricAllTagsResponse> {
+    const config = await this.getConfiguration();
+    const metricsApi = new v2.MetricsApi(config);
+
+    return retryWithBackoff(async () => {
+      const response = await metricsApi.listTagsByMetricName({
+        metricName,
+      });
+      return response;
+    });
+  }
+
+  /**
+   * Aggregate APM spans into buckets and compute metrics
+   * This is the preferred method for APM service metrics (vs queryMetrics)
+   * Now uses proper v2 types for compute and groupBy
+   */
+  async aggregateSpans(params: {
+    query: string;
+    from: number;
+    to: number;
+    compute?: v2.SpansCompute[];
+    groupBy?: v2.SpansGroupBy[];
+  }): Promise<v2.SpansAggregateResponse> {
+    const config = await this.getConfiguration();
+    const spansApi = new v2.SpansApi(config);
+
+    return retryWithBackoff(async () => {
+      const body: v2.SpansAggregateRequest = {
+        data: {
+          type: 'aggregate_request' as v2.SpansAggregateRequestType,
+          attributes: {
+            filter: {
+              query: params.query,
+              from: new Date(params.from).toISOString(),
+              to: new Date(params.to).toISOString(),
+            } as v2.SpansQueryFilter,
+            compute: params.compute,
+            groupBy: params.groupBy,
+          } as v2.SpansAggregateRequestAttributes,
+        } as v2.SpansAggregateData,
+      };
+
+      console.log('=== Spans API Request ===');
+      console.log('Query:', params.query);
+      console.log('Compute count:', params.compute?.length || 0);
+      console.log('GroupBy count:', params.groupBy?.length || 0);
+
+      const response = await spansApi.aggregateSpans({ body });
+
+      console.log('=== Spans API Response ===');
+      console.log('Status:', response.meta?.status);
+      console.log('Buckets:', response.data?.buckets?.length || 0);
+
+      return response;
+    });
+  }
+
+  /**
+   * List APM spans that match a query
+   */
+  async listSpans(params: {
+    query: string;
+    from: number;
+    to: number;
+    sort?: string;
+    limit?: number;
+  }): Promise<v2.SpansListResponse> {
+    const config = await this.getConfiguration();
+    const spansApi = new v2.SpansApi(config);
+
+    return retryWithBackoff(async () => {
+      const body: v2.SpansListRequest = {
+        data: {
+          type: 'search_request',
+          attributes: {
+            filter: {
+              query: params.query,
+              from: new Date(params.from).toISOString(),
+              to: new Date(params.to).toISOString(),
+            },
+            sort: params.sort ? (params.sort as v2.SpansSort) : undefined,
+            page: params.limit ? { limit: params.limit } : undefined,
+          },
+        },
+      };
+
+      const response = await spansApi.listSpans({ body });
+      return response;
+    });
+  }
+
+  /**
+   * Get service definition from service catalog
+   */
+  async getServiceDefinition(serviceName: string): Promise<v2.ServiceDefinitionGetResponse> {
+    const config = await this.getConfiguration();
+    const serviceDefinitionApi = new v2.ServiceDefinitionApi(config);
+
+    return retryWithBackoff(async () => {
+      const response = await serviceDefinitionApi.getServiceDefinition({
+        serviceName,
+      });
       return response;
     });
   }
