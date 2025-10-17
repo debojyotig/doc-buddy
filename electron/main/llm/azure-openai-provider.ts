@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import OpenAI, { AzureOpenAI } from 'openai';
 import {
   LLMProvider,
   ChatRequest,
@@ -29,7 +29,7 @@ export interface AzureOpenAIConfig {
  */
 export class AzureOpenAIProvider implements LLMProvider {
   public readonly name = 'azure-openai';
-  private client: OpenAI | null = null;
+  private client: AzureOpenAI | null = null;
   private config: AzureOpenAIConfig;
   private accessToken: string | null = null;
   private tokenExpiry: number = 0;
@@ -101,7 +101,7 @@ export class AzureOpenAIProvider implements LLMProvider {
   /**
    * Initialize or refresh the OpenAI client
    */
-  private async initClient(): Promise<OpenAI> {
+  private async initClient(): Promise<AzureOpenAI> {
     const token = await this.getAccessToken();
 
     const headers: Record<string, string> = {};
@@ -121,23 +121,14 @@ export class AzureOpenAIProvider implements LLMProvider {
       Object.assign(headers, this.config.customHeaders);
     }
 
-    // For corporate API gateways, don't add api-version as query param
-    // The version is already in the gateway URL path
-    const clientConfig: any = {
-      baseURL: this.config.endpoint,
-      apiKey: token, // Azure AD token used as API key
+    // Use AzureOpenAI client which properly handles Azure AD tokens
+    this.client = new AzureOpenAI({
+      endpoint: this.config.endpoint!,
+      apiVersion: this.config.apiVersion!,
+      deployment: this.config.deploymentName || this.config.model!,
+      azureADTokenProvider: async () => token,
       defaultHeaders: headers,
-    };
-
-    // Only add api-version query param for standard Azure OpenAI endpoints
-    // Corporate gateways typically have version in the path (e.g., /1.0/)
-    if (!this.config.endpoint?.includes('/api-management/')) {
-      clientConfig.defaultQuery = {
-        'api-version': this.config.apiVersion,
-      };
-    }
-
-    this.client = new OpenAI(clientConfig);
+    });
 
     return this.client;
   }
@@ -230,18 +221,17 @@ export class AzureOpenAIProvider implements LLMProvider {
   async chat(request: ChatRequest): Promise<ChatResponse> {
     const client = await this.initClient();
 
-    // For Azure OpenAI, when deployment is in the endpoint URL,
-    // we use a placeholder model name (Azure ignores this parameter)
+    // For AzureOpenAI client, model parameter should be the actual model name (not deployment)
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
-      model: this.config.deploymentName || this.config.model || 'gpt-4',
+      model: this.config.model || 'gpt-4',
       messages: this.convertMessages(request.messages, request.system),
       max_tokens: request.max_tokens || 4096,
       temperature: request.temperature,
-      top_p: request.top_p,
     };
 
     console.log('Azure OpenAI Request:');
     console.log('  Endpoint:', this.config.endpoint);
+    console.log('  Deployment:', this.config.deploymentName);
     console.log('  Model:', params.model);
     console.log('  Messages:', params.messages.length);
 
@@ -318,11 +308,10 @@ export class AzureOpenAIProvider implements LLMProvider {
     const client = await this.initClient();
 
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
-      model: this.config.deploymentName || this.config.model || 'gpt-4',
+      model: this.config.model || 'gpt-4',
       messages: this.convertMessages(request.messages, request.system),
       max_tokens: request.max_tokens || 4096,
       temperature: request.temperature,
-      top_p: request.top_p,
       stream: true,
     };
 

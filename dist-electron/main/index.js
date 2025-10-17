@@ -1217,7 +1217,7 @@ class AzureOpenAIProvider {
       model: process.env.AZURE_MODEL || config.model || "gpt-4",
       authUrl: process.env.AZURE_AUTH_URL || config.authUrl,
       endpoint: process.env.AZURE_ENDPOINT || config.endpoint,
-      apiVersion: process.env.AZURE_API_VERSION || config.apiVersion || "2024-02-01",
+      apiVersion: process.env.AZURE_API_VERSION || config.apiVersion || "2025-01-01-preview",
       scope: process.env.AZURE_SCOPE || config.scope || "https://cognitiveservices.azure.com/.default",
       upstreamEnv: process.env.AZURE_UPSTREAM_ENV || config.upstreamEnv,
       // Required fields
@@ -1277,14 +1277,12 @@ class AzureOpenAIProvider {
     if (this.config.customHeaders) {
       Object.assign(headers, this.config.customHeaders);
     }
-    this.client = new OpenAI({
-      baseURL: this.config.endpoint,
-      apiKey: token,
-      // Azure AD token used as API key
-      defaultHeaders: headers,
-      defaultQuery: {
-        "api-version": this.config.apiVersion
-      }
+    this.client = new OpenAI.AzureOpenAI({
+      endpoint: this.config.endpoint,
+      apiVersion: this.config.apiVersion,
+      deployment: this.config.deploymentName || this.config.model,
+      azureADTokenProvider: async () => token,
+      defaultHeaders: headers
     });
     return this.client;
   }
@@ -1362,17 +1360,40 @@ class AzureOpenAIProvider {
   async chat(request) {
     const client = await this.initClient();
     const params = {
-      model: this.config.model,
+      model: this.config.model || "gpt-4",
       messages: this.convertMessages(request.messages, request.system),
       max_tokens: request.max_tokens || 4096,
-      temperature: request.temperature,
-      top_p: request.top_p
+      temperature: request.temperature
     };
+    console.log("Azure OpenAI Request:");
+    console.log("  Endpoint:", this.config.endpoint);
+    console.log("  Deployment:", this.config.deploymentName);
+    console.log("  Model:", params.model);
+    console.log("  Messages:", params.messages.length);
     if (request.tools && request.tools.length > 0) {
       params.tools = this.convertTools(request.tools);
       params.tool_choice = "auto";
+      console.log("  Tools:", request.tools.length);
     }
-    const response = await client.chat.completions.create(params);
+    try {
+      const response = await client.chat.completions.create(params);
+      console.log("Azure OpenAI Response: Success");
+      return this.parseResponse(response);
+    } catch (error) {
+      console.error("Azure OpenAI Error:");
+      console.error("  Status:", error.status);
+      console.error("  Message:", error.message);
+      console.error("  Error:", error.error);
+      const detailedMessage = `Azure OpenAI API Error (${error.status})
+
+Endpoint: ${this.config.endpoint}
+Model: ${params.model}
+Error: ${error.message || "Unknown error"}
+Details: ${JSON.stringify(error.error || error.response?.data || "No details available", null, 2)}`;
+      throw new Error(detailedMessage);
+    }
+  }
+  parseResponse(response) {
     const choice = response.choices[0];
     const content = [];
     if (choice.message.content) {
@@ -1408,11 +1429,10 @@ class AzureOpenAIProvider {
   async *streamChat(request) {
     const client = await this.initClient();
     const params = {
-      model: this.config.model,
+      model: this.config.model || "gpt-4",
       messages: this.convertMessages(request.messages, request.system),
       max_tokens: request.max_tokens || 4096,
       temperature: request.temperature,
-      top_p: request.top_p,
       stream: true
     };
     if (request.tools && request.tools.length > 0) {
