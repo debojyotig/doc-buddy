@@ -1,0 +1,11 @@
+version: 0.1.0
+files:
+  - url: Doc-Buddy-0.1.0-arm64.dmg
+    sha512: vjtnTkifAvrTWEJ3iQiBXdQK4MO4BzzsXgoWhFzijfk4hG1Eo7O0R5nM5GB6vii8xeGzQl6rAzidAOdyGpt+GA==
+    size: 112708864
+  - url: Doc-Buddy-0.1.0.dmg
+    sha512: /oO0NZMJid6CyVK29KukFX+wkJDZNv3a98TLtDPtyyO3gP+R95NOk6IbbDL0WeY7yFB/Hey7QxpRPlE87qyWAw==
+    size: 117730311
+path: Doc-Buddy-0.1.0-arm64.dmg
+sha512: vjtnTkifAvrTWEJ3iQiBXdQK4MO4BzzsXgoWhFzijfk4hG1Eo7O0R5nM5GB6vii8xeGzQl6rAzidAOdyGpt+GA==
+releaseDate: '2025-10-17T05:59:51.871Z'

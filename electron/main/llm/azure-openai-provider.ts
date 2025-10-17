@@ -50,6 +50,11 @@ export class AzureOpenAIProvider implements LLMProvider {
       projectId: config.projectId,
       customHeaders: config.customHeaders,
     };
+
+    console.log('AzureOpenAIProvider initialized with config:');
+    console.log('  projectId from env:', process.env.AZURE_PROJECT_ID);
+    console.log('  projectId from config param:', config.projectId);
+    console.log('  projectId final:', this.config.projectId);
   }
 
   /**
@@ -130,6 +135,8 @@ export class AzureOpenAIProvider implements LLMProvider {
     const baseURL = `${this.config.endpoint}/openai/deployments/${deploymentName}`;
 
     console.log('Initializing OpenAI client with baseURL:', baseURL);
+    console.log('Config projectId:', this.config.projectId);
+    console.log('Headers being sent:', JSON.stringify(headers, null, 2));
 
     // Use regular OpenAI client with manual Bearer token in headers
     this.client = new OpenAI({
