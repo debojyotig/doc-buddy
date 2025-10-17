@@ -22,9 +22,14 @@ contextBridge.exposeInMainWorld('electron', {
   getChatHistory: () => ipcRenderer.invoke('chat:getHistory'),
   clearChatHistory: () => ipcRenderer.invoke('chat:clearHistory'),
 
-  // Settings
-  getSettings: () => ipcRenderer.invoke('settings:get'),
-  updateSettings: (settings: unknown) => ipcRenderer.invoke('settings:update', settings),
+  // Config Management
+  hasConfig: () => ipcRenderer.invoke('config:hasConfig'),
+  getConfig: () => ipcRenderer.invoke('config:get'),
+  saveConfig: (config: unknown) => ipcRenderer.invoke('config:save', config),
+  validateConfig: (config: unknown) => ipcRenderer.invoke('config:validate', config),
+  getConfigPath: () => ipcRenderer.invoke('config:getPath'),
+  exportConfig: () => ipcRenderer.invoke('config:export'),
+  importConfig: () => ipcRenderer.invoke('config:import'),
 
   // Event listeners
   on: (channel: string, callback: (...args: unknown[]) => void) => {
@@ -63,8 +68,13 @@ export interface ElectronAPI {
   }>;
   getChatHistory: () => Promise<any[]>;
   clearChatHistory: () => Promise<{ success: boolean }>;
-  getSettings: () => Promise<unknown>;
-  updateSettings: (settings: unknown) => Promise<void>;
+  hasConfig: () => Promise<boolean>;
+  getConfig: () => Promise<any>;
+  saveConfig: (config: any) => Promise<{ success: boolean; errors?: string[] }>;
+  validateConfig: (config: any) => Promise<{ valid: boolean; errors: string[] }>;
+  getConfigPath: () => Promise<string>;
+  exportConfig: () => Promise<{ success: boolean; path?: string }>;
+  importConfig: () => Promise<{ success: boolean; errors?: string[] }>;
   on: (channel: string, callback: (...args: unknown[]) => void) => void;
   off: (channel: string, callback: (...args: unknown[]) => void) => void;
 }

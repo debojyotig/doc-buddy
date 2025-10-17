@@ -16,98 +16,92 @@ Doc-Buddy is a desktop application that enables dev-on-call engineers to interac
 
 ## Quick Start
 
-### Prerequisites
+### For End Users (No npm required!)
 
-- **Node.js 20.x or higher** and **npm 10+**
+**Doc-Buddy uses a "Build Once, Configure Anywhere" deployment model** - perfect for corporate environments!
+
+1. **Get the application** - Download the pre-built app for your platform
+2. **Launch Doc-Buddy** - Just double-click the app
+3. **Configure** - Click the ⚙️ Settings icon and enter your credentials
+4. **Start chatting!** - Ask questions about your Datadog data
+
+See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for detailed user instructions.
+
+### For Developers/Administrators
+
+#### Prerequisites
+
+- **Node.js 20.x or higher** and **npm 10+** (build machine only)
 - **Datadog account** with organization access
-- **LLM provider account** - Anthropic (recommended) or OpenAI
+- **Azure OpenAI** access with valid credentials
 
-### Installation
-
-#### Option A: Public npm Registry (Internet Access)
+#### Build & Distribution
 
 ```bash
-# Clone the repository (or navigate to your existing project)
+# Clone the repository
+git clone <repo-url>
 cd doc-buddy
 
-# Install dependencies
+# Install dependencies (build machine only)
 npm install
 
-# Setup environment
-cp .env.example .env
+# Build the application
+npm run build
+npm run build:mac    # or build:win, build:linux
+
+# Distribute the built app to your team
+# Users don't need npm - they just run the app!
 ```
 
-#### Option B: Corporate Environment (JFrog Artifactory)
-
-If you're on a corporate network without external npm access:
-
-1. **Configure npm for Artifactory** - See [QUICK_BUILD_JFROG.md](./docs/QUICK_BUILD_JFROG.md)
-2. **Install dependencies**: `npm install`
-3. **Setup environment**: `cp .env.example .env`
-
-Full guide: [JFROG_ARTIFACTORY_SETUP.md](./docs/JFROG_ARTIFACTORY_SETUP.md)
+See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for complete deployment instructions.
 
 ### Configuration
 
-**Step 1: Configure Datadog Authentication**
+**No .env file needed!** Doc-Buddy uses an external configuration file at `~/.doc-buddy/config.json`.
 
-**Option A: OAuth (Recommended if available)**
+#### Option 1: Settings UI (Easiest)
 
-See [DATADOG_OAUTH_SETUP.md](./docs/DATADOG_OAUTH_SETUP.md) for detailed instructions.
+1. Launch the app
+2. Click the ⚙️ Settings icon
+3. Fill in your credentials:
+   - **Datadog**: Site, API Key, Application Key
+   - **Azure OpenAI**: Client ID, Secret, Auth URL, Endpoint, Scope
+4. Click "Save Configuration"
 
-Quick version:
-1. Go to Datadog → Organization Settings → OAuth Apps
-2. Create new OAuth app named "Doc-Buddy"
-3. Set redirect URI: `http://localhost:60080/callback`
-4. Add required scopes (metrics:read, logs_read_data, etc.)
-5. Copy the Client ID to your `.env` file
+#### Option 2: Manual Config File
 
-**Option B: API Keys (If OAuth not available)**
+Create `~/.doc-buddy/config.json`:
 
-See [DATADOG_API_KEY_SETUP.md](./docs/DATADOG_API_KEY_SETUP.md) for detailed instructions.
-
-⚠️ **Note**: If you only have access to "Personal Settings → Application Keys" (not OAuth Apps), you'll need to use API keys. This requires some code modifications. Let me know and I can implement this for you!
-
-**Step 2: Configure LLM Provider**
-
-See [LLM_SETUP.md](./docs/LLM_SETUP.md) for detailed instructions.
-
-Quick version:
-- **For Anthropic Claude** (recommended):
-  1. Go to https://console.anthropic.com/settings/keys
-  2. Create new API key
-  3. Add to `.env`: `ANTHROPIC_API_KEY=sk-ant-...`
-
-- **For OpenAI**:
-  1. Go to https://platform.openai.com/api-keys
-  2. Create new API key
-  3. Add to `.env`: `OPENAI_API_KEY=sk-proj-...`
-
-**Your `.env` should look like:**
-```bash
-DD_OAUTH_CLIENT_ID=your-datadog-client-id
-DD_SITE=datadoghq.com
-DD_OAUTH_REDIRECT_URI=http://localhost:60080/callback
-
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-# OR
-# OPENAI_API_KEY=sk-proj-your-key-here
-
-NODE_ENV=development
-LOG_LEVEL=info
+```json
+{
+  "datadog": {
+    "site": "datadoghq.com",
+    "apiKey": "your-datadog-api-key",
+    "appKey": "your-datadog-app-key"
+  },
+  "azureOpenAI": {
+    "clientId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "clientSecret": "your-client-secret",
+    "authUrl": "https://login.microsoftonline.com/YOUR_TENANT/oauth2/v2.0/token",
+    "endpoint": "https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT",
+    "scope": "https://cognitiveservices.azure.com/.default"
+  }
+}
 ```
+
+A template is provided in `config.template.json`.
 
 ### Run the Application
 
+#### Development Mode
+
 ```bash
-# Development mode (recommended for testing)
 npm run dev
 ```
 
-The app will open automatically. Follow the setup wizard to:
-1. Connect to Datadog (browser will open for OAuth)
-2. Configure your LLM provider
-3. Start chatting!
+#### Production Mode
+
+Just launch the built application - configuration is loaded automatically from `~/.doc-buddy/config.json`.
 
 ### Building
 
@@ -120,18 +114,15 @@ npm run build:linux  # Linux
 
 ## Documentation
 
-### Setup Guides
-- **[Quick Start with API Keys](./docs/QUICK_START_API_KEYS.md)** ⭐ **FASTEST** - Complete setup in 10 minutes
-- **[Datadog API Key Setup](./docs/DATADOG_API_KEY_SETUP.md)** - Detailed API key guide
-- **[Datadog OAuth Setup](./docs/DATADOG_OAUTH_SETUP.md)** - OAuth setup (if you have access)
-- **[LLM Provider Setup](./docs/LLM_SETUP.md)** - Configure Anthropic or OpenAI
-- **[Azure OpenAI Setup](./docs/AZURE_OPENAI_SETUP.md)** - Generic Azure OpenAI configuration
+### Deployment & Configuration
+- **[Deployment Guide](./DEPLOYMENT_GUIDE.md)** ⭐ **START HERE** - Build once, deploy anywhere
+- **[Azure OpenAI Setup](./docs/AZURE_OPENAI_SETUP.md)** - Azure OpenAI configuration guide
 - **[Testing Guide](./docs/TESTING_GUIDE.md)** - Comprehensive testing checklist
 
-### Corporate Environment
+### Corporate Environment (Legacy)
+These guides are for older npm-based deployment - **see DEPLOYMENT_GUIDE.md** for the recommended approach:
 - **[JFrog Artifactory Quick Build](./docs/QUICK_BUILD_JFROG.md)** - Quick setup for corporate networks
 - **[JFrog Artifactory Setup](./docs/JFROG_ARTIFACTORY_SETUP.md)** - Detailed corporate environment guide
-- **[GitHub Setup](./docs/GITHUB_SETUP.md)** - Push to GitHub repository
 
 ### Technical Documentation
 - **[Architecture](./docs/ARCHITECTURE.md)** - System architecture and design

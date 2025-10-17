@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
+import { SettingsModal } from '../settings/SettingsModal';
 import { useChat } from '../../hooks/useChat';
 import { useAppStore } from '../../lib/store';
 
@@ -169,6 +170,9 @@ export const ChatInterface: React.FC = () => {
 
       {/* Input */}
       <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+
+      {/* Settings Modal */}
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 };

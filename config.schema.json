@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Doc-Buddy Configuration",
+  "description": "Configuration file for Doc-Buddy application",
+  "type": "object",
+  "required": ["datadog", "azureOpenAI"],
+  "properties": {
+    "datadog": {
+      "type": "object",
+      "description": "Datadog API configuration",
+      "required": ["site", "apiKey", "appKey"],
+      "properties": {
+        "site": {
+          "type": "string",
+          "description": "Datadog site (e.g., datadoghq.com, datadoghq.eu)",
+          "default": "datadoghq.com"
+        },
+        "apiKey": {
+          "type": "string",
+          "description": "Datadog API key"
+        },
+        "appKey": {
+          "type": "string",
+          "description": "Datadog application key"
+        }
+      }
+    },
+    "azureOpenAI": {
+      "type": "object",
+      "description": "Azure OpenAI configuration",
+      "required": ["clientId", "clientSecret", "authUrl", "endpoint", "scope"],
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "description": "Azure AD application (client) ID"
+        },
+        "clientSecret": {
+          "type": "string",
+          "description": "Azure AD client secret"
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Optional project ID if required by your setup"
+        },
+        "authUrl": {
+          "type": "string",
+          "description": "Azure AD token endpoint URL",
+          "format": "uri"
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Azure OpenAI endpoint URL",
+          "format": "uri"
+        },
+        "scope": {
+          "type": "string",
+          "description": "OAuth2 scope for Azure OpenAI",
+          "default": "https://cognitiveservices.azure.com/.default"
+        }
+      }
+    }
+  }
+}

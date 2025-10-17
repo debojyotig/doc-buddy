@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
+import { configManager, AppConfig } from './config-manager.js';
 import { getAuthManager } from './auth/auth-manager.js';
 import { getLLMManager } from './llm/llm-manager.js';
 import { getChatHandler } from './chat/chat-handler.js';
@@ -9,30 +9,41 @@ import { getChatHandler } from './chat/chat-handler.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables from .env file
-// In production, the .env file should be in the app resources
-// In development, it's in the project root
-const envPath = app.isPackaged
-  ? path.join(process.resourcesPath, '.env')
-  : path.join(__dirname, '../../.env');
+// Managers will be initialized after app is ready
+let authManager: ReturnType<typeof getAuthManager>;
+let llmManager: ReturnType<typeof getLLMManager>;
+let chatHandler: ReturnType<typeof getChatHandler>;
 
-console.log('Loading .env from:', envPath);
-const result = dotenv.config({ path: envPath });
+function loadConfig() {
+  // Load config from external file
+  console.log('Config file location:', configManager.getConfigPath());
+  const config = configManager.load();
 
-if (result.error) {
-  console.warn('.env file not found or could not be loaded:', result.error.message);
-  console.warn('Make sure you have created a .env file in the project root');
-} else {
-  console.log('.env file loaded successfully');
-  console.log('DD_SITE:', process.env.DD_SITE);
-  console.log('DD_API_KEY present:', !!process.env.DD_API_KEY);
-  console.log('DD_APP_KEY present:', !!process.env.DD_APP_KEY);
+  if (!config) {
+    console.warn('Config file not found. User will need to configure the app on first run.');
+    console.warn('Config location:', configManager.getConfigPath());
+  } else {
+    const validation = configManager.validate(config);
+    if (!validation.valid) {
+      console.error('Config validation failed:', validation.errors);
+    } else {
+      console.log('Config loaded successfully');
+      console.log('Datadog site:', config.datadog.site);
+      console.log('Azure endpoint:', config.azureOpenAI.endpoint);
+
+      // Set environment variables for compatibility with existing code
+      process.env.DD_SITE = config.datadog.site;
+      process.env.DD_API_KEY = config.datadog.apiKey;
+      process.env.DD_APP_KEY = config.datadog.appKey;
+      process.env.AZURE_CLIENT_ID = config.azureOpenAI.clientId;
+      process.env.AZURE_CLIENT_SECRET = config.azureOpenAI.clientSecret;
+      process.env.AZURE_PROJECT_ID = config.azureOpenAI.projectId || '';
+      process.env.AZURE_AUTH_URL = config.azureOpenAI.authUrl;
+      process.env.AZURE_ENDPOINT = config.azureOpenAI.endpoint;
+      process.env.AZURE_SCOPE = config.azureOpenAI.scope;
+    }
+  }
 }
-
-// Initialize managers
-const authManager = getAuthManager();
-const llmManager = getLLMManager();
-const chatHandler = getChatHandler();
 
 // Environment
 const isDev = process.env.NODE_ENV === 'development';
@@ -83,6 +94,14 @@ function createWindow() {
 
 // App lifecycle
 app.whenReady().then(() => {
+  // Load config after app is ready
+  loadConfig();
+
+  // Initialize managers
+  authManager = getAuthManager();
+  llmManager = getLLMManager();
+  chatHandler = getChatHandler();
+
   createWindow();
 
   app.on('activate', () => {
@@ -180,14 +199,91 @@ ipcMain.handle('chat:clearHistory', async () => {
   return { success: true };
 });
 
-// IPC Handlers - Settings (placeholder)
-ipcMain.handle('settings:get', async () => {
-  return {};
+// IPC Handlers - Config Management
+ipcMain.handle('config:hasConfig', async () => {
+  return configManager.hasConfig();
 });
 
-ipcMain.handle('settings:update', async (_event, settings: unknown) => {
-  console.log('Settings update:', settings);
-  return;
+ipcMain.handle('config:get', async () => {
+  return configManager.get();
+});
+
+ipcMain.handle('config:save', async (_event, newConfig: AppConfig) => {
+  const validation = configManager.validate(newConfig);
+  if (!validation.valid) {
+    return { success: false, errors: validation.errors };
+  }
+
+  const saved = configManager.save(newConfig);
+  if (saved) {
+    // Update environment variables
+    process.env.DD_SITE = newConfig.datadog.site;
+    process.env.DD_API_KEY = newConfig.datadog.apiKey;
+    process.env.DD_APP_KEY = newConfig.datadog.appKey;
+    process.env.AZURE_CLIENT_ID = newConfig.azureOpenAI.clientId;
+    process.env.AZURE_CLIENT_SECRET = newConfig.azureOpenAI.clientSecret;
+    process.env.AZURE_PROJECT_ID = newConfig.azureOpenAI.projectId || '';
+    process.env.AZURE_AUTH_URL = newConfig.azureOpenAI.authUrl;
+    process.env.AZURE_ENDPOINT = newConfig.azureOpenAI.endpoint;
+    process.env.AZURE_SCOPE = newConfig.azureOpenAI.scope;
+  }
+
+  return { success: saved };
+});
+
+ipcMain.handle('config:validate', async (_event, testConfig: AppConfig) => {
+  return configManager.validate(testConfig);
+});
+
+ipcMain.handle('config:getPath', async () => {
+  return configManager.getConfigPath();
+});
+
+ipcMain.handle('config:export', async () => {
+  const result = await dialog.showSaveDialog({
+    title: 'Export Configuration',
+    defaultPath: 'doc-buddy-config.json',
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  });
+
+  if (result.canceled || !result.filePath) {
+    return { success: false };
+  }
+
+  const exported = configManager.exportToFile(result.filePath);
+  return { success: exported, path: result.filePath };
+});
+
+ipcMain.handle('config:import', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Import Configuration',
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+    properties: ['openFile'],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return { success: false };
+  }
+
+  const imported = configManager.importFromFile(result.filePaths[0]);
+
+  if (imported.success) {
+    // Update environment variables after successful import
+    const newConfig = configManager.get();
+    if (newConfig) {
+      process.env.DD_SITE = newConfig.datadog.site;
+      process.env.DD_API_KEY = newConfig.datadog.apiKey;
+      process.env.DD_APP_KEY = newConfig.datadog.appKey;
+      process.env.AZURE_CLIENT_ID = newConfig.azureOpenAI.clientId;
+      process.env.AZURE_CLIENT_SECRET = newConfig.azureOpenAI.clientSecret;
+      process.env.AZURE_PROJECT_ID = newConfig.azureOpenAI.projectId || '';
+      process.env.AZURE_AUTH_URL = newConfig.azureOpenAI.authUrl;
+      process.env.AZURE_ENDPOINT = newConfig.azureOpenAI.endpoint;
+      process.env.AZURE_SCOPE = newConfig.azureOpenAI.scope;
+    }
+  }
+
+  return imported;
 });
 
 // Graceful shutdown

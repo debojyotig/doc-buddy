@@ -1,0 +1,16 @@
+{
+  "$schema": "./config.schema.json",
+  "datadog": {
+    "site": "datadoghq.com",
+    "apiKey": "",
+    "appKey": ""
+  },
+  "azureOpenAI": {
+    "clientId": "",
+    "clientSecret": "",
+    "projectId": "",
+    "authUrl": "https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token",
+    "endpoint": "https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT",
+    "scope": "https://cognitiveservices.azure.com/.default"
+  }
+}
