@@ -1385,6 +1385,14 @@ class AzureOpenAIProvider {
         params.temperature = request.temperature;
       }
     }
+    if (request.tools && request.tools.length > 0) {
+      if (!isGpt5Mini) {
+        params.tools = this.convertTools(request.tools);
+        params.tool_choice = "auto";
+      } else {
+        console.log("  Skipping tools for gpt-5-mini (may not support function calling)");
+      }
+    }
     console.log("Azure OpenAI Request:");
     console.log("  BaseURL:", client.baseURL);
     console.log("  Endpoint:", this.config.endpoint);
@@ -1392,12 +1400,8 @@ class AzureOpenAIProvider {
     console.log("  Model:", params.model);
     console.log("  Is GPT-5-Mini:", isGpt5Mini);
     console.log("  Messages:", params.messages.length);
-    console.log("  Request Payload:", JSON.stringify(params, null, 2));
-    if (request.tools && request.tools.length > 0) {
-      params.tools = this.convertTools(request.tools);
-      params.tool_choice = "auto";
-      console.log("  Tools:", request.tools.length);
-    }
+    console.log("  Has Tools:", !!params.tools);
+    console.log("  Request Payload (FINAL):", JSON.stringify(params, null, 2));
     try {
       const response = await client.chat.completions.create(params);
       console.log("Azure OpenAI Response: Success");
@@ -1466,7 +1470,7 @@ Details: ${JSON.stringify(error.error || error.response?.data || "No details ava
         params.temperature = request.temperature;
       }
     }
-    if (request.tools && request.tools.length > 0) {
+    if (request.tools && request.tools.length > 0 && !isGpt5Mini) {
       params.tools = this.convertTools(request.tools);
       params.tool_choice = "auto";
     }

@@ -260,6 +260,16 @@ export class AzureOpenAIProvider implements LLMProvider {
       }
     }
 
+    // Add tools if provided (skip for gpt-5-mini as it may not support function calling)
+    if (request.tools && request.tools.length > 0) {
+      if (!isGpt5Mini) {
+        params.tools = this.convertTools(request.tools) as any;
+        params.tool_choice = 'auto';
+      } else {
+        console.log('  Skipping tools for gpt-5-mini (may not support function calling)');
+      }
+    }
+
     console.log('Azure OpenAI Request:');
     console.log('  BaseURL:', client.baseURL);
     console.log('  Endpoint:', this.config.endpoint);
@@ -267,13 +277,8 @@ export class AzureOpenAIProvider implements LLMProvider {
     console.log('  Model:', params.model);
     console.log('  Is GPT-5-Mini:', isGpt5Mini);
     console.log('  Messages:', params.messages.length);
-    console.log('  Request Payload:', JSON.stringify(params, null, 2));
-
-    if (request.tools && request.tools.length > 0) {
-      params.tools = this.convertTools(request.tools) as any;
-      params.tool_choice = 'auto';
-      console.log('  Tools:', request.tools.length);
-    }
+    console.log('  Has Tools:', !!(params as any).tools);
+    console.log('  Request Payload (FINAL):', JSON.stringify(params, null, 2));
 
     try {
       const response = await client.chat.completions.create(params);
@@ -360,7 +365,8 @@ export class AzureOpenAIProvider implements LLMProvider {
       }
     }
 
-    if (request.tools && request.tools.length > 0) {
+    // Add tools if provided (skip for gpt-5-mini as it may not support function calling)
+    if (request.tools && request.tools.length > 0 && !isGpt5Mini) {
       params.tools = this.convertTools(request.tools) as any;
       params.tool_choice = 'auto';
     }
