@@ -237,7 +237,7 @@ export class AzureOpenAIProvider implements LLMProvider {
       model: this.config.model || 'gpt-4',
       messages: this.convertMessages(request.messages, request.system),
       max_tokens: request.max_tokens || 4096,
-      temperature: request.temperature,
+      temperature: request.temperature !== undefined ? request.temperature : 0.7,
     };
 
     console.log('Azure OpenAI Request:');
