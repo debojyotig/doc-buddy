@@ -9,11 +9,15 @@ coverage/
 
 # Production
 # IMPORTANT: dist-electron/ and dist-react/ are COMMITTED for corporate deployment
-# Users can run the app without npm install by using the pre-built files
+# DMG files hosted on GitHub Releases (too large for git)
 dist/
 build/
 out/
-release/
+
+# Release files (DMG/app bundles - use GitHub Releases instead)
+release/*.dmg
+release/mac/
+release/mac-arm64/
 
 # Environment variables
 .env
