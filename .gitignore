@@ -8,9 +8,9 @@ coverage/
 *.lcov
 
 # Production
+# IMPORTANT: dist-electron/ and dist-react/ are COMMITTED for corporate deployment
+# Users can run the app without npm install by using the pre-built files
 dist/
-dist-electron/
-dist-react/
 build/
 out/
 release/
