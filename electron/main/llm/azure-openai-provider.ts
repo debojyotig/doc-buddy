@@ -1,4 +1,4 @@
-import OpenAI, { AzureOpenAI } from 'openai';
+import OpenAI from 'openai';
 import {
   LLMProvider,
   ChatRequest,
@@ -29,7 +29,7 @@ export interface AzureOpenAIConfig {
  */
 export class AzureOpenAIProvider implements LLMProvider {
   public readonly name = 'azure-openai';
-  private client: AzureOpenAI | null = null;
+  private client: OpenAI | null = null;
   private config: AzureOpenAIConfig;
   private accessToken: string | null = null;
   private tokenExpiry: number = 0;
@@ -95,16 +95,19 @@ export class AzureOpenAIProvider implements LLMProvider {
     this.tokenExpiry = Date.now() + (expiresIn - 300) * 1000;
 
     console.log('Azure OpenAI access token acquired successfully');
-    return this.accessToken;
+    return this.accessToken!;
   }
 
   /**
    * Initialize or refresh the OpenAI client
    */
-  private async initClient(): Promise<AzureOpenAI> {
+  private async initClient(): Promise<OpenAI> {
     const token = await this.getAccessToken();
 
     const headers: Record<string, string> = {};
+
+    // Add Authorization header with Bearer token (required for corporate gateways)
+    headers['Authorization'] = `Bearer ${token}`;
 
     // Add projectId header if provided
     if (this.config.projectId) {
@@ -121,13 +124,21 @@ export class AzureOpenAIProvider implements LLMProvider {
       Object.assign(headers, this.config.customHeaders);
     }
 
-    // Use AzureOpenAI client which properly handles Azure AD tokens
-    this.client = new AzureOpenAI({
-      endpoint: this.config.endpoint!,
-      apiVersion: this.config.apiVersion!,
-      deployment: this.config.deploymentName || this.config.model!,
-      azureADTokenProvider: async () => token,
+    // For corporate gateways, construct full path including deployment
+    // Final URL will be: {baseURL}/chat/completions?api-version=...
+    const deploymentName = this.config.deploymentName || this.config.model!;
+    const baseURL = `${this.config.endpoint}/openai/deployments/${deploymentName}`;
+
+    console.log('Initializing OpenAI client with baseURL:', baseURL);
+
+    // Use regular OpenAI client with manual Bearer token in headers
+    this.client = new OpenAI({
+      baseURL: baseURL,
+      apiKey: 'not-used', // Required by SDK but we use Bearer token in Authorization header
       defaultHeaders: headers,
+      defaultQuery: {
+        'api-version': this.config.apiVersion,
+      },
     });
 
     return this.client;

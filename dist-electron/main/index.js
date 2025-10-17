@@ -1268,6 +1268,7 @@ class AzureOpenAIProvider {
   async initClient() {
     const token = await this.getAccessToken();
     const headers = {};
+    headers["Authorization"] = `Bearer ${token}`;
     if (this.config.projectId) {
       headers["projectId"] = this.config.projectId;
     }
@@ -1277,12 +1278,17 @@ class AzureOpenAIProvider {
     if (this.config.customHeaders) {
       Object.assign(headers, this.config.customHeaders);
     }
-    this.client = new OpenAI.AzureOpenAI({
-      endpoint: this.config.endpoint,
-      apiVersion: this.config.apiVersion,
-      deployment: this.config.deploymentName || this.config.model,
-      azureADTokenProvider: async () => token,
-      defaultHeaders: headers
+    const deploymentName = this.config.deploymentName || this.config.model;
+    const baseURL = `${this.config.endpoint}/openai/deployments/${deploymentName}`;
+    console.log("Initializing OpenAI client with baseURL:", baseURL);
+    this.client = new OpenAI({
+      baseURL,
+      apiKey: "not-used",
+      // Required by SDK but we use Bearer token in Authorization header
+      defaultHeaders: headers,
+      defaultQuery: {
+        "api-version": this.config.apiVersion
+      }
     });
     return this.client;
   }
