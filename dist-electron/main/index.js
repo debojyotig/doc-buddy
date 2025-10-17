@@ -2610,22 +2610,28 @@ function loadConfig() {
     console.warn("Config file not found. User will need to configure the app on first run.");
     console.warn("Config location:", configManager.getConfigPath());
   } else {
+    console.log("Config loaded from:", configManager.getConfigPath());
+    if (config.datadog) {
+      process.env.DD_SITE = config.datadog.site || "";
+      process.env.DD_API_KEY = config.datadog.apiKey || "";
+      process.env.DD_APP_KEY = config.datadog.appKey || "";
+    }
+    if (config.azureOpenAI) {
+      process.env.AZURE_CLIENT_ID = config.azureOpenAI.clientId || "";
+      process.env.AZURE_CLIENT_SECRET = config.azureOpenAI.clientSecret || "";
+      process.env.AZURE_PROJECT_ID = config.azureOpenAI.projectId || "";
+      process.env.AZURE_AUTH_URL = config.azureOpenAI.authUrl || "";
+      process.env.AZURE_ENDPOINT = config.azureOpenAI.endpoint || "";
+      process.env.AZURE_SCOPE = config.azureOpenAI.scope || "";
+    }
     const validation = configManager.validate(config);
     if (!validation.valid) {
-      console.error("Config validation failed:", validation.errors);
+      console.warn("Config validation failed:", validation.errors);
+      console.warn("Some features may not work until all required fields are filled.");
     } else {
       console.log("Config loaded successfully");
       console.log("Datadog site:", config.datadog.site);
       console.log("Azure endpoint:", config.azureOpenAI.endpoint);
-      process.env.DD_SITE = config.datadog.site;
-      process.env.DD_API_KEY = config.datadog.apiKey;
-      process.env.DD_APP_KEY = config.datadog.appKey;
-      process.env.AZURE_CLIENT_ID = config.azureOpenAI.clientId;
-      process.env.AZURE_CLIENT_SECRET = config.azureOpenAI.clientSecret;
-      process.env.AZURE_PROJECT_ID = config.azureOpenAI.projectId || "";
-      process.env.AZURE_AUTH_URL = config.azureOpenAI.authUrl;
-      process.env.AZURE_ENDPOINT = config.azureOpenAI.endpoint;
-      process.env.AZURE_SCOPE = config.azureOpenAI.scope;
     }
   }
 }
