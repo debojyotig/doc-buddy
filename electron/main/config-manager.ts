@@ -12,9 +12,14 @@ export interface AppConfig {
     clientId: string;
     clientSecret: string;
     projectId?: string;
+    deploymentName?: string;
+    model?: string;
     authUrl: string;
     endpoint: string;
+    apiVersion?: string;
     scope: string;
+    upstreamEnv?: string;
+    customHeaders?: Record<string, string>;
   };
 }
 

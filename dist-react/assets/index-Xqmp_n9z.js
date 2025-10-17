@@ -45014,12 +45014,50 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$7 = [
+const __iconNode$b = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+const ChevronDown = createLucideIcon("chevron-down", __iconNode$b);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$a = [["path", { d: "m18 15-6-6-6 6", key: "153udz" }]];
+const ChevronUp = createLucideIcon("chevron-up", __iconNode$a);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$9 = [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["line", { x1: "12", x2: "12", y1: "8", y2: "12", key: "1pkeuh" }],
   ["line", { x1: "12", x2: "12.01", y1: "16", y2: "16", key: "4dfq90" }]
 ];
-const CircleAlert = createLucideIcon("circle-alert", __iconNode$7);
+const CircleAlert = createLucideIcon("circle-alert", __iconNode$9);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$8 = [
+  ["path", { d: "M21.801 10A10 10 0 1 1 17 3.335", key: "yps3ct" }],
+  ["path", { d: "m9 11 3 3L22 4", key: "1pflzl" }]
+];
+const CircleCheckBig = createLucideIcon("circle-check-big", __iconNode$8);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$7 = [
+  ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2", key: "17jyea" }],
+  ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "zix9uf" }]
+];
+const Copy = createLucideIcon("copy", __iconNode$7);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -45027,10 +45065,11 @@ const CircleAlert = createLucideIcon("circle-alert", __iconNode$7);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$6 = [
-  ["path", { d: "M21.801 10A10 10 0 1 1 17 3.335", key: "yps3ct" }],
-  ["path", { d: "m9 11 3 3L22 4", key: "1pflzl" }]
+  ["path", { d: "M12 15V3", key: "m9g1x1" }],
+  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
+  ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
 ];
-const CircleCheckBig = createLucideIcon("circle-check-big", __iconNode$6);
+const Download = createLucideIcon("download", __iconNode$6);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -45038,18 +45077,6 @@ const CircleCheckBig = createLucideIcon("circle-check-big", __iconNode$6);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$5 = [
-  ["path", { d: "M12 15V3", key: "m9g1x1" }],
-  ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", key: "ih7n3h" }],
-  ["path", { d: "m7 10 5 5 5-5", key: "brsn70" }]
-];
-const Download = createLucideIcon("download", __iconNode$5);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$4 = [
   [
     "path",
     {
@@ -45067,7 +45094,24 @@ const __iconNode$4 = [
   ],
   ["path", { d: "m2 2 20 20", key: "1ooewy" }]
 ];
-const EyeOff = createLucideIcon("eye-off", __iconNode$4);
+const EyeOff = createLucideIcon("eye-off", __iconNode$5);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$4 = [
+  [
+    "path",
+    {
+      d: "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0",
+      key: "1nclc0"
+    }
+  ],
+  ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
+];
+const Eye = createLucideIcon("eye", __iconNode$4);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -45078,23 +45122,6 @@ const __iconNode$3 = [
   [
     "path",
     {
-      d: "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0",
-      key: "1nclc0"
-    }
-  ],
-  ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
-];
-const Eye = createLucideIcon("eye", __iconNode$3);
-/**
- * @license lucide-react v0.546.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */
-const __iconNode$2 = [
-  [
-    "path",
-    {
       d: "M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
       key: "1c8476"
     }
@@ -45102,7 +45129,21 @@ const __iconNode$2 = [
   ["path", { d: "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7", key: "1ydtos" }],
   ["path", { d: "M7 3v4a1 1 0 0 0 1 1h7", key: "t51u73" }]
 ];
-const Save = createLucideIcon("save", __iconNode$2);
+const Save = createLucideIcon("save", __iconNode$3);
+/**
+ * @license lucide-react v0.546.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$2 = [
+  ["path", { d: "M10 11v6", key: "nco0om" }],
+  ["path", { d: "M14 11v6", key: "outv1u" }],
+  ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
+  ["path", { d: "M3 6h18", key: "d0wm0j" }],
+  ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
+];
+const Trash2 = createLucideIcon("trash-2", __iconNode$2);
 /**
  * @license lucide-react v0.546.0 - ISC
  *
@@ -45137,9 +45178,13 @@ function SettingsModal({ isOpen, onClose }) {
       clientId: "",
       clientSecret: "",
       projectId: "",
+      deploymentName: "gpt-4",
+      model: "gpt-4",
       authUrl: "https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token",
-      endpoint: "https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT",
-      scope: "https://cognitiveservices.azure.com/.default"
+      endpoint: "https://YOUR_RESOURCE.openai.azure.com",
+      apiVersion: "2025-01-01-preview",
+      scope: "https://cognitiveservices.azure.com/.default",
+      upstreamEnv: ""
     }
   });
   const [configPath, setConfigPath] = reactExports.useState("");
@@ -45330,10 +45375,39 @@ function SettingsModal({ isOpen, onClose }) {
                 type: "text",
                 value: config.azureOpenAI.projectId || "",
                 onChange: (e) => setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, projectId: e.target.value } }),
-                placeholder: "Leave empty if not required",
+                placeholder: "Leave empty if not required by your gateway",
                 className: "w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
               }
-            )
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1", children: "Sent as 'projectId' header" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1", children: "Deployment Name" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "text",
+                value: config.azureOpenAI.deploymentName || "",
+                onChange: (e) => setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, deploymentName: e.target.value } }),
+                placeholder: "gpt-5-mini_2025-08-07",
+                className: "w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1", children: "Azure deployment name (e.g., gpt-5-mini_2025-08-07)" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1", children: "Model Name" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "text",
+                value: config.azureOpenAI.model || "",
+                onChange: (e) => setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, model: e.target.value } }),
+                placeholder: "gpt-5-mini",
+                className: "w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1", children: "Model name sent in API request body" })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1", children: "Auth URL" }),
@@ -45343,10 +45417,11 @@ function SettingsModal({ isOpen, onClose }) {
                 type: "text",
                 value: config.azureOpenAI.authUrl,
                 onChange: (e) => setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, authUrl: e.target.value } }),
-                placeholder: "https://login.microsoftonline.com/YOUR_TENANT_ID/oauth2/v2.0/token",
+                placeholder: "https://api.uhg.com/oauth2/token",
                 className: "w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
               }
-            )
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1", children: "OAuth2 token endpoint" })
           ] }),
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1", children: "Endpoint URL" }),
@@ -45356,7 +45431,21 @@ function SettingsModal({ isOpen, onClose }) {
                 type: "text",
                 value: config.azureOpenAI.endpoint,
                 onChange: (e) => setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, endpoint: e.target.value } }),
-                placeholder: "https://YOUR_RESOURCE.openai.azure.com/openai/deployments/YOUR_DEPLOYMENT",
+                placeholder: "https://api.uhg.com/api/cloud/api-management/ai-gateway-reasoning/1.0",
+                className: "w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1", children: "Base endpoint WITHOUT /openai/deployments path (SDK adds this)" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1", children: "API Version" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "text",
+                value: config.azureOpenAI.apiVersion || "",
+                onChange: (e) => setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, apiVersion: e.target.value } }),
+                placeholder: "2025-01-01-preview",
                 className: "w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
               }
             )
@@ -45369,10 +45458,24 @@ function SettingsModal({ isOpen, onClose }) {
                 type: "text",
                 value: config.azureOpenAI.scope,
                 onChange: (e) => setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, scope: e.target.value } }),
-                placeholder: "https://cognitiveservices.azure.com/.default",
+                placeholder: "https://api.uhg.com/.default",
                 className: "w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-900 dark:text-gray-100"
               }
             )
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("label", { className: "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1", children: "Upstream Environment (Optional)" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "text",
+                value: config.azureOpenAI.upstreamEnv || "",
+                onChange: (e) => setConfig({ ...config, azureOpenAI: { ...config.azureOpenAI, upstreamEnv: e.target.value } }),
+                placeholder: "Leave empty or enter 'stg' for staging",
+                className: "w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-xs text-gray-500 dark:text-gray-400 mt-1", children: "Sent as 'x-upstream-env' header" })
           ] })
         ] })
       ] })
@@ -45683,12 +45786,133 @@ const ChatInterface = () => {
     /* @__PURE__ */ jsxRuntimeExports.jsx(SettingsModal, { isOpen: showSettings, onClose: () => setShowSettings(false) })
   ] });
 };
+function DebugDrawer() {
+  const [isOpen, setIsOpen] = reactExports.useState(false);
+  const [logs, setLogs] = reactExports.useState([]);
+  const [autoScroll, setAutoScroll] = reactExports.useState(true);
+  const logsEndRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    const handleLog = (log) => {
+      setLogs((prev) => [...prev, log]);
+    };
+    window.electron.on("debug:log", handleLog);
+    return () => {
+      window.electron.off("debug:log", handleLog);
+    };
+  }, []);
+  reactExports.useEffect(() => {
+    if (autoScroll && logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [logs, autoScroll]);
+  const clearLogs = () => {
+    setLogs([]);
+  };
+  const copyLogs = () => {
+    const text2 = logs.map((log) => `[${log.timestamp}] [${log.level.toUpperCase()}] ${log.message}`).join("\n");
+    navigator.clipboard.writeText(text2);
+  };
+  const getLogColor = (level) => {
+    switch (level) {
+      case "error":
+        return "text-red-600 dark:text-red-400";
+      case "warn":
+        return "text-yellow-600 dark:text-yellow-400";
+      case "info":
+        return "text-blue-600 dark:text-blue-400";
+      default:
+        return "text-gray-700 dark:text-gray-300";
+    }
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed bottom-0 left-0 right-0 z-50", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "button",
+      {
+        onClick: () => setIsOpen(!isOpen),
+        className: "absolute bottom-0 right-4 bg-gray-800 dark:bg-gray-700 text-white px-4 py-2 rounded-t-lg shadow-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors flex items-center gap-2",
+        children: [
+          isOpen ? /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronDown, { className: "w-4 h-4" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(ChevronUp, { className: "w-4 h-4" }),
+          "Debug Console (",
+          logs.length,
+          ")"
+        ]
+      }
+    ),
+    isOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-gray-900 dark:bg-gray-800 border-t border-gray-700 shadow-2xl", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between px-4 py-2 border-b border-gray-700", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-sm font-semibold text-gray-100", children: "Server Logs" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex items-center gap-2 text-xs text-gray-400", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "input",
+              {
+                type: "checkbox",
+                checked: autoScroll,
+                onChange: (e) => setAutoScroll(e.target.checked),
+                className: "rounded"
+              }
+            ),
+            "Auto-scroll"
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: copyLogs,
+              className: "p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded transition-colors",
+              title: "Copy logs",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(Copy, { className: "w-4 h-4" })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: clearLogs,
+              className: "p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded transition-colors",
+              title: "Clear logs",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(Trash2, { className: "w-4 h-4" })
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              onClick: () => setIsOpen(false),
+              className: "p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded transition-colors",
+              title: "Close",
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { className: "w-4 h-4" })
+            }
+          )
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-64 overflow-y-auto bg-gray-950 dark:bg-gray-900 p-2 font-mono text-xs", children: logs.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-gray-500 text-center py-8", children: "No logs yet" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "space-y-1", children: [
+        logs.map((log, index2) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2 hover:bg-gray-800 px-2 py-1 rounded", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-gray-500 shrink-0", children: log.timestamp }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: `font-semibold shrink-0 uppercase ${getLogColor(log.level)}`, children: [
+            "[",
+            log.level,
+            "]"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-gray-300 break-all", children: log.message }),
+          log.args && log.args.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-gray-500", children: JSON.stringify(log.args, null, 2) })
+        ] }, index2)),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { ref: logsEndRef })
+      ] }) })
+    ] })
+  ] });
+}
 function App() {
   const { isDatadogConnected, isLLMConnected } = useAppStore();
   if (!isDatadogConnected || !isLLMConnected) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx(SetupWizard, {});
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(SetupWizard, {}),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(DebugDrawer, {})
+    ] });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(ChatInterface, {});
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ChatInterface, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(DebugDrawer, {})
+  ] });
 }
 const queryClient = new QueryClient({
   defaultOptions: {

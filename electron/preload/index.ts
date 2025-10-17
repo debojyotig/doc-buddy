@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('electron', {
       'llm:status-changed',
       'chat:message',
       'chat:error',
+      'debug:log',
     ];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (_event, ...args) => callback(...args));

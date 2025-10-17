@@ -38,9 +38,13 @@ function loadConfig() {
       process.env.AZURE_CLIENT_ID = config.azureOpenAI.clientId || '';
       process.env.AZURE_CLIENT_SECRET = config.azureOpenAI.clientSecret || '';
       process.env.AZURE_PROJECT_ID = config.azureOpenAI.projectId || '';
+      process.env.AZURE_DEPLOYMENT_NAME = config.azureOpenAI.deploymentName || '';
+      process.env.AZURE_MODEL = config.azureOpenAI.model || '';
       process.env.AZURE_AUTH_URL = config.azureOpenAI.authUrl || '';
       process.env.AZURE_ENDPOINT = config.azureOpenAI.endpoint || '';
+      process.env.AZURE_API_VERSION = config.azureOpenAI.apiVersion || '';
       process.env.AZURE_SCOPE = config.azureOpenAI.scope || '';
+      process.env.AZURE_UPSTREAM_ENV = config.azureOpenAI.upstreamEnv || '';
     }
 
     // Validate and warn about missing fields
@@ -62,6 +66,59 @@ const VITE_DEV_SERVER_URL = 'http://localhost:5173';
 
 let mainWindow: BrowserWindow | null = null;
 
+// Console interceptor to send logs to renderer
+function interceptConsole(window: BrowserWindow) {
+  const originalLog = console.log;
+  const originalInfo = console.info;
+  const originalWarn = console.warn;
+  const originalError = console.error;
+
+  const serializeArg = (arg: any): string => {
+    if (arg instanceof Error) {
+      // Special handling for Error objects
+      return `${arg.name}: ${arg.message}\n${arg.stack || ''}`;
+    } else if (typeof arg === 'object' && arg !== null) {
+      try {
+        return JSON.stringify(arg, null, 2);
+      } catch (e) {
+        return String(arg);
+      }
+    }
+    return String(arg);
+  };
+
+  const sendLog = (level: string, ...args: any[]) => {
+    const timestamp = new Date().toISOString().split('T')[1].slice(0, -1); // HH:MM:SS.mmm
+    const message = args.map(serializeArg).join(' ');
+
+    window.webContents.send('debug:log', {
+      timestamp,
+      level,
+      message,
+    });
+  };
+
+  console.log = (...args: any[]) => {
+    originalLog.apply(console, args);
+    sendLog('log', ...args);
+  };
+
+  console.info = (...args: any[]) => {
+    originalInfo.apply(console, args);
+    sendLog('info', ...args);
+  };
+
+  console.warn = (...args: any[]) => {
+    originalWarn.apply(console, args);
+    sendLog('warn', ...args);
+  };
+
+  console.error = (...args: any[]) => {
+    originalError.apply(console, args);
+    sendLog('error', ...args);
+  };
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -78,6 +135,9 @@ function createWindow() {
     titleBarStyle: 'default',
     show: false, // Show after ready-to-show
   });
+
+  // Intercept console logs and send to renderer
+  interceptConsole(mainWindow);
 
   // Load app
   if (isDev) {

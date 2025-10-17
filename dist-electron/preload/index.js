@@ -30,7 +30,8 @@ electron.contextBridge.exposeInMainWorld("electron", {
       "datadog:status-changed",
       "llm:status-changed",
       "chat:message",
-      "chat:error"
+      "chat:error",
+      "debug:log"
     ];
     if (validChannels.includes(channel)) {
       electron.ipcRenderer.on(channel, (_event, ...args) => callback(...args));
