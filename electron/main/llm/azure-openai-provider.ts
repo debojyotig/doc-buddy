@@ -236,15 +236,29 @@ export class AzureOpenAIProvider implements LLMProvider {
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
       model: this.config.model || 'gpt-4',
       messages: this.convertMessages(request.messages, request.system),
-      max_tokens: request.max_tokens || 4096,
-      temperature: request.temperature !== undefined ? request.temperature : 0.7,
     };
+
+    // Only add optional parameters if the model supports them
+    // gpt-5-mini doesn't support max_tokens or temperature
+    const modelName = this.config.model?.toLowerCase() || '';
+    const isGpt5Mini = modelName.includes('gpt-5-mini');
+
+    if (!isGpt5Mini) {
+      // GPT-4 and most other models support these parameters
+      if (request.max_tokens) {
+        (params as any).max_tokens = request.max_tokens;
+      }
+      if (request.temperature !== undefined) {
+        params.temperature = request.temperature;
+      }
+    }
 
     console.log('Azure OpenAI Request:');
     console.log('  BaseURL:', client.baseURL);
     console.log('  Endpoint:', this.config.endpoint);
     console.log('  Deployment:', this.config.deploymentName);
     console.log('  Model:', params.model);
+    console.log('  Is GPT-5-Mini:', isGpt5Mini);
     console.log('  Messages:', params.messages.length);
     console.log('  Request Payload:', JSON.stringify(params, null, 2));
 
@@ -323,10 +337,21 @@ export class AzureOpenAIProvider implements LLMProvider {
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
       model: this.config.model || 'gpt-4',
       messages: this.convertMessages(request.messages, request.system),
-      max_tokens: request.max_tokens || 4096,
-      temperature: request.temperature,
       stream: true,
     };
+
+    // Only add optional parameters if the model supports them
+    const modelName = this.config.model?.toLowerCase() || '';
+    const isGpt5Mini = modelName.includes('gpt-5-mini');
+
+    if (!isGpt5Mini) {
+      if (request.max_tokens) {
+        (params as any).max_tokens = request.max_tokens;
+      }
+      if (request.temperature !== undefined) {
+        params.temperature = request.temperature;
+      }
+    }
 
     if (request.tools && request.tools.length > 0) {
       params.tools = this.convertTools(request.tools) as any;
