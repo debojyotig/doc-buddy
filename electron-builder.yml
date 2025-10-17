@@ -8,6 +8,8 @@ directories:
 
 files:
   - dist-electron
+  - dist-react
+  - package.json
   - '!**/.vscode/*'
   - '!src/*'
   - '!electron/*'

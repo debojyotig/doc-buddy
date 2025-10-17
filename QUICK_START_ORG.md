@@ -1,18 +1,24 @@
 # Quick Start for Corporate/Org Machines
 
-## Running Doc-Buddy WITHOUT npm install
+## Running Doc-Buddy on Your Org Machine
 
-This guide is for running the pre-built Doc-Buddy application on your organization's dev machine **without** requiring `npm install`.
+This guide is for running the pre-built Doc-Buddy application on your organization's dev machine with **minimal npm dependencies** (only native modules).
 
 ### Prerequisites
 
-Only **Electron** needs to be installed globally (one-time setup):
+You need npm access to install **only the production dependencies** (native modules like keytar, electron, etc.):
 
 ```bash
-npm install -g electron
+# This installs only production dependencies (no build tools)
+npm install --production
 ```
 
-That's it! No other dependencies needed.
+Or if you have access to install Electron globally:
+```bash
+npm install -g electron
+# Plus production dependencies
+npm install --production
+```
 
 ### Step 1: Clone the Repository
 
@@ -40,20 +46,19 @@ nano ~/.doc-buddy/config.json
 
 ### Step 3: Run the Application
 
-#### Option A: Using the run script (easiest)
+#### Option A: Using npm start (Recommended)
 ```bash
-./run.sh
+npm start
 ```
 
-#### Option B: Using Electron directly
-```bash
-electron dist-electron/main/index.js
-```
+This runs `electron .` which properly resolves all node_modules including native dependencies.
 
-#### Option C: Using npm (if available)
+#### Option B: Using npm run dev (Development mode)
 ```bash
 npm run dev
 ```
+
+This includes hot reload and dev tools.
 
 ### Configuration
 
@@ -89,32 +94,31 @@ Your `~/.doc-buddy/config.json` should look like:
 
 ✅ **Pre-built app files** (`dist-electron/` and `dist-react/`)
 - No build step required
-- No npm dependencies needed
-- Just clone and run!
+- Only production dependencies needed (native modules)
+- Just clone, install deps, and run!
 
 ✅ **Config template** (`config.template.json`)
 - Copy to `~/.doc-buddy/config.json`
 - Fill in your credentials
 
-✅ **Run script** (`run.sh`)
-- Simple wrapper to start the app
-- Checks for Electron installation
+✅ **Production dependencies** (minimal)
+- Electron binary
+- Native modules (keytar, electron-store)
+- Runtime dependencies only - no build tools!
 
 ### Troubleshooting
 
-#### Electron not found
+#### Cannot find module 'keytar' or other native modules
 ```bash
-# Install globally
-npm install -g electron
-
-# Verify installation
-electron --version
+# Install production dependencies
+npm install --production
 ```
 
-#### Permission denied on run.sh
-```bash
-chmod +x run.sh
-```
+#### npm install fails with registry issues
+If your corporate registry blocks some packages, you may need to:
+1. Configure npm to use your org's registry
+2. Contact your IT team to whitelist required packages
+3. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for more help
 
 #### Config file not loading
 - Check file location: `ls ~/.doc-buddy/config.json`
@@ -149,10 +153,15 @@ The repository includes:
 - ✅ External configuration (no .env needed)
 
 You only need:
-- ✅ Electron (installed globally)
+- ✅ Production dependencies (`npm install --production`)
 - ✅ Config file at `~/.doc-buddy/config.json`
 
-**No npm install. No build step. Just run!**
+**No build step needed! Pre-built files included in git.**
+
+The production dependencies are minimal:
+- Electron binary
+- Native modules (keytar, electron-store)
+- Runtime libraries (no TypeScript, no build tools, no dev dependencies)
 
 ### For Developers
 

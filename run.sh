@@ -1,20 +1,28 @@
 #!/bin/bash
 
 # Doc-Buddy Runner Script
-# This script runs the pre-built Electron app without requiring npm install
+# This script runs the pre-built Electron app
 
-# Check if Electron is available
-if ! command -v electron &> /dev/null; then
-    echo "Error: Electron is not installed globally."
+# Check if node_modules exists
+if [ ! -d "node_modules" ]; then
+    echo "Error: node_modules not found."
     echo ""
-    echo "To run this app, you need to install Electron globally:"
-    echo "  npm install -g electron"
+    echo "Please install production dependencies first:"
+    echo "  npm install --production"
     echo ""
-    echo "Or use the local electron binary:"
-    echo "  ./node_modules/.bin/electron dist-electron/main/index.js"
     exit 1
 fi
 
-# Run the app
+# Check if dist-electron exists
+if [ ! -d "dist-electron" ]; then
+    echo "Error: dist-electron not found."
+    echo ""
+    echo "Built files are missing. Please pull the latest from git:"
+    echo "  git pull"
+    echo ""
+    exit 1
+fi
+
+# Run the app using npm start
 echo "Starting Doc-Buddy..."
-electron dist-electron/main/index.js
+npm start
